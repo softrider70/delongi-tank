@@ -46,6 +46,44 @@ CONFIG_SPIRAM_USE=y
 CONFIG_SPIRAM_USE_MALLOC=y
 
 # ============================================================================
+# I2C Configuration (for VL53L0X sensor)
+# ============================================================================
+CONFIG_I2C_ENABLED=y
+CONFIG_I2C_ISR_IRAM_SAFE=y
+
+# ============================================================================
+# WiFi Configuration
+# ============================================================================
+CONFIG_ESP_WIFI_ENABLED=y
+CONFIG_ESP_WIFI_SSID=""
+CONFIG_ESP_WIFI_PASSWORD=""
+CONFIG_WIFI_AP_SSID="delongi-tank"
+CONFIG_WIFI_AP_PASSWORD="12345678"
+CONFIG_WIFI_AP_ASSIGN_IP=y
+CONFIG_WIFI_AP_IP_ADDR="10.1.1.1"
+CONFIG_WIFI_AP_NETMASK_ADDR="255.255.255.0"
+CONFIG_WIFI_AP_GATEWAY_ADDR="10.1.1.1"
+
+# ============================================================================
+# NVS Flash Encryption
+# ============================================================================
+CONFIG_NVS_ENCRYPTION=y
+
+# ============================================================================
+# HTTP Server Configuration
+# ============================================================================
+CONFIG_ESP_HTTP_SERVER=y
+CONFIG_HTTPD_MAX_URI_LEN=512
+CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+CONFIG_HTTPD_MAX_REQ_LINE_LEN=1024
+
+# ============================================================================
+# mDNS Service Discovery
+# ============================================================================
+CONFIG_MDNS_SERVICE_DISCOVERY=y
+CONFIG_MDNS_INSTANCE_NAME="delongi-tank"
+
+# ============================================================================
 # Security (Optional - uncomment for production)
 # ============================================================================
 # CONFIG_SECURE_BOOT_ENABLED=y

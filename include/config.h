@@ -59,6 +59,10 @@
 #define VALVE_TIMEOUT_CHECK_MS          1000    // Alle 1s prüfen
 #define TASK_VALVE_CHECK_MS             1000    // Task delay für valve_task
 
+// Füllfortschritt: Während geöffnetem Ventil muss der Sensorabstand kleiner werden
+#define FILL_PROGRESS_MIN_DELTA_CM      1       // Mindestens 1 cm Verringerung
+#define FILL_PROGRESS_TIMEOUT_DEFAULT   5000    // Innerhalb von 5s muss Fortschritt sichtbar sein
+
 // Ventil-PWM oder Digital
 #define VALVE_USE_PWM                   0       // 0: Digital (on/off), 1: PWM
 #define VALVE_PWM_FREQ                  1000    // Nur falls PWM: 1kHz
@@ -76,6 +80,7 @@
 #define NVS_KEY_THRESHOLD_TOP           "thresh_top"     // Tank VOLL
 #define NVS_KEY_THRESHOLD_BOTTOM        "thresh_bottom"  // Tank LEER
 #define NVS_KEY_VALVE_TIMEOUT_MAX       "timeout_max"
+#define NVS_KEY_FILL_PROGRESS_TIMEOUT   "fill_prog_to"
 #define NVS_KEY_LAST_FULL_TIMESTAMP     "last_full"
 #define NVS_KEY_ERROR_LOG               "error_log"
 
