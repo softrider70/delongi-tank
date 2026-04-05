@@ -85,6 +85,7 @@ typedef struct {
     uint32_t emergency_trigger_count;  // Anzahl Notaus-Ausloesungen
     uint32_t total_open_time_ms;  // Gesamte Öffnungszeit in ms
     float total_liters;  // Gesamte Liter basierend auf Durchfluss
+    uint64_t current_valve_open_start_ms;  // Startzeit der aktuell offenen Ventilsitzung
     uint32_t last_update_timestamp;
 } system_state_t;
 
@@ -103,6 +104,7 @@ static system_state_t sys_state = {
     .emergency_trigger_count = 0,
     .total_open_time_ms = 0,
     .total_liters = 0.0f,
+    .current_valve_open_start_ms = 0,
     .last_update_timestamp = 0
 };
 
@@ -401,21 +403,20 @@ static void reset_emergency_stop(void)
     nvs_commit(sys_state.nvs_handle);
 }
 
-static void finalize_valve_session(uint64_t now_ms, uint64_t *valve_open_start_ms)
+static void finalize_active_valve_session(uint64_t now_ms)
 {
-    if (valve_open_start_ms == NULL || *valve_open_start_ms == 0) {
+    xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
+    if (sys_state.current_valve_open_start_ms == 0) {
+        xSemaphoreGive(sys_state_mutex);
         return;
     }
 
-    uint64_t open_time_ms = now_ms - *valve_open_start_ms;
-
-    xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
+    uint64_t open_time_ms = now_ms - sys_state.current_valve_open_start_ms;
     sys_state.total_open_time_ms += (uint32_t)open_time_ms;
     sys_state.total_liters += ((float)open_time_ms / 60000.0f) * sys_state.flow_rate_l_per_min;
+    sys_state.current_valve_open_start_ms = 0;
     persist_runtime_counters();
     xSemaphoreGive(sys_state_mutex);
-
-    *valve_open_start_ms = 0;
 }
 
 /**
@@ -680,6 +681,7 @@ static esp_err_t emergency_stop_handler(httpd_req_t *req)
     sys_state.manual_fill_active = false;
     gpio_set_level(GPIO_VALVE_CONTROL, 0);
     sys_state.valve_state = false;
+    finalize_active_valve_session(esp_timer_get_time() / 1000);
     
     char response[256];
     snprintf(response, sizeof(response),
@@ -701,6 +703,7 @@ static esp_err_t valve_stop_handler(httpd_req_t *req)
     sys_state.manual_fill_active = false;
     sys_state.valve_state = false;  // Close valve
     gpio_set_level(GPIO_VALVE_CONTROL, 0);
+    finalize_active_valve_session(esp_timer_get_time() / 1000);
     
     char response[128];
     snprintf(response, sizeof(response),
@@ -715,6 +718,12 @@ static esp_err_t valve_stop_handler(httpd_req_t *req)
  */
 static esp_err_t system_reset_handler(httpd_req_t *req)
 {
+    sys_state.manual_fill_active = false;
+    sys_state.valve_state = false;
+    gpio_set_level(GPIO_VALVE_CONTROL, 0);
+    finalize_active_valve_session(esp_timer_get_time() / 1000);
+    persist_runtime_counters();
+
     // Just send response, then restart (keeps WiFi credentials in NVS)
     char response[100];
     snprintf(response, sizeof(response),
@@ -1051,9 +1060,7 @@ input{width:100%;padding:8px;margin:0 0 8px 0;box-sizing:border-box;border-radiu
 <div class="tank-sub">cm Wasserstand</div>
 <div id="percent" class="percent">--</div>
 <div class="tank-bar">
-<div id="bar-oben" style="position:absolute;height:3px;background:#f44336;width:1%;top:30%;right:0"></div>
 <div id="bar-fill" style="height:100%;background:#4caf50;width:0%"></div>
-<div id="bar-unten" style="position:absolute;height:3px;background:#ff9800;width:1%;bottom:0;left:0"></div>
 </div>
 </div>
 <div class="summary-grid">
@@ -1127,10 +1134,18 @@ let isFilling = false;
 let isEmergencyActive = false;
 let dashboardTimer = null;
 let dashboardPollInFlight = false;
+let settingsSaveInFlight = false;
 const DASHBOARD_REFRESH_MS = 1000;
 function scheduleDashboardRefresh(delay){
     if(dashboardTimer) clearTimeout(dashboardTimer);
     dashboardTimer = setTimeout(() => updateDashboard(), delay);
+}
+function syncSaveButton(){
+    const btn = document.getElementById('save-btn');
+    if(!btn) return;
+    btn.disabled = settingsSaveInFlight;
+    btn.style.opacity = settingsSaveInFlight ? '0.6' : '1';
+    btn.textContent = settingsSaveInFlight ? 'Speichert...' : 'Speichern';
 }
 function syncFillButton(){
     const btn = document.getElementById('fill-btn');
@@ -1174,13 +1189,10 @@ function updateDashboard(force){
     dashboardPollInFlight = true;
     fetch('/api/status').then(r => r.json()).then(d => {
     const lv = d.sensors.tank_level_cm || 0;
-    const top = d.config.threshold_top_cm || 1;
-    const bot = d.config.threshold_bottom_cm || 50;
         const full = Math.max(0, Math.min(100, Number((d.sensors && (d.sensors.fill_percent ?? d.sensors.tank_full)) || 0)));
     document.getElementById('level').textContent = lv;
     document.getElementById('percent').textContent = full.toFixed(0) + '%';
     document.getElementById('bar-fill').style.width = full + '%';
-    document.getElementById('bar-oben').style.right = ((top/bot)*100) + '%';
     document.getElementById('valve').textContent = d.valve.state === 'OPEN' ? 'OFFEN' : 'GESCHL';
     document.getElementById('status').textContent = d.status;
         document.getElementById('app-version').textContent = (d.system && d.system.app_version) ? d.system.app_version : '-';
@@ -1198,9 +1210,6 @@ function updateDashboard(force){
     } else {
         reasonEl.style.display = 'none';
     }
-    // Disable save button if emergency active
-    document.getElementById('save-btn').disabled = !!d.emergency;
-    document.getElementById('save-btn').style.opacity = !!d.emergency ? 0.5 : 1;
     }).catch(() => {}).finally(() => {
         dashboardPollInFlight = false;
         scheduleDashboardRefresh(DASHBOARD_REFRESH_MS);
@@ -1210,11 +1219,12 @@ function fill(){if(isEmergencyActive){showMsg('dashboard', 'Notaus aktiv - erst 
 function stop(){fetch('/api/valve/stop', {method: 'POST'}).then(() => {isFilling = false; updateDashboard(true); showMsg('dashboard', 'Ventil geschlossen', false);});}
 function resetEmergency(){if(!isEmergencyActive){showMsg('dashboard', 'Keine Notaus-Sperre aktiv', false); return;} fetch('/api/emergency_stop', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'reset'})}).then(r => r.json()).then(d => {updateDashboard(true); document.getElementById('emergency-reason').style.display = 'none'; showMsg('dashboard', d.message || 'Reset ausgefuehrt', false);}).catch(() => showMsg('dashboard', 'Reset fehlgeschlagen', true));}
 function loadSettings(){fetch('/api/config').then(r => r.json()).then(d => {document.getElementById('top').value = d.config.threshold_top_cm; document.getElementById('bottom').value = d.config.threshold_bottom_cm; document.getElementById('timeout').value = d.config.timeout_max_ms; document.getElementById('fill-progress-timeout').value = d.config.fill_progress_timeout_ms; document.getElementById('flow-rate').value = d.config.flow_rate_l_per_min;});}
-function saveSettings(){const top = parseInt(document.getElementById('top').value, 10); const bottom = parseInt(document.getElementById('bottom').value, 10); const timeout = parseInt(document.getElementById('timeout').value, 10); const fillProgressTimeout = parseInt(document.getElementById('fill-progress-timeout').value, 10); const flowRate = parseFloat(document.getElementById('flow-rate').value); if(!Number.isFinite(top) || !Number.isFinite(bottom) || !Number.isFinite(timeout) || !Number.isFinite(fillProgressTimeout) || !Number.isFinite(flowRate)){showMsg('settings', 'Alle Felder muessen gueltige Zahlen enthalten', true); return;} if(top < 1 || top > 100 || bottom < 1 || bottom > 100){showMsg('settings', 'OBEN und UNTEN muessen zwischen 1 und 100 cm liegen', true); return;} if(top >= bottom){showMsg('settings', 'OBEN muss kleiner als UNTEN sein', true); return;} if(timeout < 1000 || fillProgressTimeout < 1000){showMsg('settings', 'Timeout-Werte muessen mindestens 1000 ms sein', true); return;} if(flowRate <= 0 || flowRate > 50){showMsg('settings', 'Durchfluss muss zwischen 0.1 und 50 L/min liegen', true); return;} const cfg = {threshold_top_cm: top, threshold_bottom_cm: bottom, timeout_max_ms: timeout, fill_progress_timeout_ms: fillProgressTimeout, flow_rate_l_per_min: flowRate}; fetch('/api/config', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(cfg)}).then(async r => {if(!r.ok) throw new Error(await r.text() || ('API error: ' + r.status)); return r.json();}).then(() => showMsg('settings', 'Einstellungen gespeichert', false)).catch(e => showMsg('settings', 'Fehler: ' + e.message, true));}
+function saveSettings(){const top = parseInt(document.getElementById('top').value, 10); const bottom = parseInt(document.getElementById('bottom').value, 10); const timeout = parseInt(document.getElementById('timeout').value, 10); const fillProgressTimeout = parseInt(document.getElementById('fill-progress-timeout').value, 10); const flowRate = parseFloat(document.getElementById('flow-rate').value); if(!Number.isFinite(top) || !Number.isFinite(bottom) || !Number.isFinite(timeout) || !Number.isFinite(fillProgressTimeout) || !Number.isFinite(flowRate)){showMsg('settings', 'Alle Felder muessen gueltige Zahlen enthalten', true); return;} if(top < 1 || top > 100 || bottom < 1 || bottom > 100){showMsg('settings', 'OBEN und UNTEN muessen zwischen 1 und 100 cm liegen', true); return;} if(top >= bottom){showMsg('settings', 'OBEN muss kleiner als UNTEN sein', true); return;} if(timeout < 1000 || fillProgressTimeout < 1000){showMsg('settings', 'Timeout-Werte muessen mindestens 1000 ms sein', true); return;} if(flowRate <= 0 || flowRate > 50){showMsg('settings', 'Durchfluss muss zwischen 0.1 und 50 L/min liegen', true); return;} const cfg = {threshold_top_cm: top, threshold_bottom_cm: bottom, timeout_max_ms: timeout, fill_progress_timeout_ms: fillProgressTimeout, flow_rate_l_per_min: flowRate}; settingsSaveInFlight = true; syncSaveButton(); fetch('/api/config', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(cfg)}).then(async r => {if(!r.ok) throw new Error(await r.text() || ('API error: ' + r.status)); return r.json();}).then(() => {showMsg('settings', 'Einstellungen gespeichert', false); updateDashboard(true);}).catch(e => showMsg('settings', 'Fehler: ' + e.message, true)).finally(() => {settingsSaveInFlight = false; syncSaveButton();});}
 function loadWiFi(){fetch('/api/wifi/status').then(r => {if(!r.ok) throw new Error('API error: '+r.status); return r.json();}).then(d => {const c=d.wifi&&d.wifi.connected; document.getElementById('wifi-con').textContent=c?'Verbunden':'Getrennt'; document.getElementById('wifi-con').style.color=c?'#4caf50':'#f44336'; document.getElementById('wifi-ssid').textContent = (d.wifi && d.wifi.ssid) ? d.wifi.ssid : '-'; document.getElementById('wifi-rssi').textContent = (d.wifi && d.wifi.rssi) ? (d.wifi.rssi + ' dBm') : '-'; document.getElementById('wifi-ip').textContent = (d.wifi && d.wifi.ip) ? d.wifi.ip : '-';}).catch(e => {console.error('loadWiFi failed:', e); document.getElementById('wifi-con').textContent='Fehler'; showMsg('wifi', 'WiFi API Fehler', true);});}
 function connectWiFi(){const s = document.getElementById('new-ssid').value; const p = document.getElementById('new-pass').value; if(!s||!p) {showMsg('wifi', 'SSID und Pass erforderlich', true); return;} fetch('/api/wifi/config', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ssid: s, password: p})}).then(r => {if(!r.ok) throw new Error('API error: '+r.status); return r.json();}).then(d => {showMsg('wifi', 'WiFi Update gesendet', false); document.getElementById('new-ssid').value = ''; document.getElementById('new-pass').value = ''; setTimeout(loadWiFi, 2000);}).catch(e => {console.error('connectWiFi failed:', e); showMsg('wifi', 'Fehler: '+e.message, true);});}
 function reset(){if(confirm('System wirklich neustarten?')) fetch('/api/system/reset', {method: 'POST'}).then(() => showMsg('wifi', 'Neustart...', false)).catch(e => showMsg('wifi', 'Fehler', true));}
 syncFillButton();
+syncSaveButton();
 updateDashboard();
 </script>
 </body></html>)html";
@@ -1791,7 +1801,6 @@ static void valve_task(void *pvParameters)
     
     uint64_t fill_start_time_ms = 0;
     uint64_t last_progress_time_ms = 0;
-    uint64_t valve_open_start_ms = 0;
     bool filling = false;
     bool manual_mode = false;
     uint16_t progress_reference_distance = 0;
@@ -1817,7 +1826,7 @@ static void valve_task(void *pvParameters)
         }
 
         if (filling && !sys_state.valve_state) {
-            finalize_valve_session(esp_timer_get_time() / 1000, &valve_open_start_ms);
+            finalize_active_valve_session(esp_timer_get_time() / 1000);
             filling = false;
             manual_mode = false;
             last_progress_time_ms = 0;
@@ -1828,7 +1837,7 @@ static void valve_task(void *pvParameters)
         if (filling && manual_mode && !sys_state.manual_fill_active) {
             gpio_set_level(GPIO_VALVE_CONTROL, 0);
             sys_state.valve_state = false;
-            finalize_valve_session(esp_timer_get_time() / 1000, &valve_open_start_ms);
+            finalize_active_valve_session(esp_timer_get_time() / 1000);
             filling = false;
             manual_mode = false;
             last_progress_time_ms = 0;
@@ -1843,8 +1852,8 @@ static void valve_task(void *pvParameters)
             manual_mode = true;
             fill_start_time_ms = esp_timer_get_time() / 1000;
             last_progress_time_ms = fill_start_time_ms;
-            valve_open_start_ms = fill_start_time_ms;
             xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
+            sys_state.current_valve_open_start_ms = fill_start_time_ms;
             sys_state.valve_open_count++;
             persist_runtime_counters();
             xSemaphoreGive(sys_state_mutex);
@@ -1860,7 +1869,7 @@ static void valve_task(void *pvParameters)
                         gpio_set_level(GPIO_VALVE_CONTROL, 0);  // Close valve
                         sys_state.valve_state = false;
                         sys_state.manual_fill_active = false;
-                        finalize_valve_session(esp_timer_get_time() / 1000, &valve_open_start_ms);
+                        finalize_active_valve_session(esp_timer_get_time() / 1000);
                         filling = false;
                         manual_mode = false;
                         last_progress_time_ms = 0;
@@ -1882,8 +1891,8 @@ static void valve_task(void *pvParameters)
             manual_mode = false;
             fill_start_time_ms = esp_timer_get_time() / 1000;
             last_progress_time_ms = fill_start_time_ms;
-            valve_open_start_ms = fill_start_time_ms;
             xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
+            sys_state.current_valve_open_start_ms = fill_start_time_ms;
             sys_state.valve_open_count++;
             persist_runtime_counters();
             xSemaphoreGive(sys_state_mutex);
@@ -1904,7 +1913,7 @@ static void valve_task(void *pvParameters)
                 sys_state.valve_state = false;
                 sys_state.manual_fill_active = false;
                 trigger_emergency_stop("No fill progress: distance did not decrease sufficiently within timeout");
-                finalize_valve_session(now_ms, &valve_open_start_ms);
+                finalize_active_valve_session(now_ms);
                 filling = false;
                 manual_mode = false;
                 last_progress_time_ms = 0;
@@ -1920,7 +1929,7 @@ static void valve_task(void *pvParameters)
                 gpio_set_level(GPIO_VALVE_CONTROL, 0);  // Close valve
                 sys_state.valve_state = false;
                 sys_state.manual_fill_active = false;
-                finalize_valve_session(now_ms, &valve_open_start_ms);
+                finalize_active_valve_session(now_ms);
                 filling = false;
                 manual_mode = false;
                 last_progress_time_ms = 0;
