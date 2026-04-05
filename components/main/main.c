@@ -221,7 +221,7 @@ static esp_err_t init_nvs(void)
 
     // Load emergency stop state
     uint32_t stored_emergency = 0;
-    if (nvs_get_u32(sys_state.nvs_handle, "emergency_stop_active", &stored_emergency) == ESP_OK) {
+    if (nvs_get_u32(sys_state.nvs_handle, NVS_KEY_EMERGENCY_STOP, &stored_emergency) == ESP_OK) {
         sys_state.emergency_stop_active = (bool)stored_emergency;
         ESP_LOGI(TAG, "Loaded emergency_stop_active from NVS: %d", sys_state.emergency_stop_active);
     }
@@ -391,7 +391,7 @@ static void trigger_emergency_stop(const char *reason)
         sys_state.emergency_trigger_count++;
     }
 
-    nvs_set_u32(sys_state.nvs_handle, "emergency_stop_active", 1);
+    nvs_set_u32(sys_state.nvs_handle, NVS_KEY_EMERGENCY_STOP, 1);
     persist_runtime_counters();
 }
 
@@ -399,7 +399,7 @@ static void reset_emergency_stop(void)
 {
     sys_state.emergency_stop_active = false;
     strcpy(sys_state.emergency_stop_reason, "");
-    nvs_set_u32(sys_state.nvs_handle, "emergency_stop_active", 0);
+    nvs_set_u32(sys_state.nvs_handle, NVS_KEY_EMERGENCY_STOP, 0);
     nvs_commit(sys_state.nvs_handle);
 }
 
@@ -570,6 +570,20 @@ static esp_err_t config_post_handler(httpd_req_t *req)
     if (top >= 0 && bottom >= 0 && timeout >= 0 && fill_progress_timeout >= 0 && flow_rate >= 0.0f) {
 
         if (top > 0 && bottom > top && timeout >= 1000 && fill_progress_timeout >= 1000 && flow_rate > 0.0f) {
+            esp_err_t nvs_err = ESP_OK;
+            nvs_err = nvs_set_u32(sys_state.nvs_handle, NVS_KEY_THRESHOLD_TOP, top);
+            if (nvs_err == ESP_OK) nvs_err = nvs_set_u32(sys_state.nvs_handle, NVS_KEY_THRESHOLD_BOTTOM, bottom);
+            if (nvs_err == ESP_OK) nvs_err = nvs_set_u32(sys_state.nvs_handle, NVS_KEY_VALVE_TIMEOUT_MAX, timeout);
+            if (nvs_err == ESP_OK) nvs_err = nvs_set_u32(sys_state.nvs_handle, NVS_KEY_FILL_PROGRESS_TIMEOUT, fill_progress_timeout);
+            if (nvs_err == ESP_OK) nvs_err = nvs_set_u32(sys_state.nvs_handle, NVS_KEY_FLOW_RATE, (uint32_t)(flow_rate * 100.0f));
+            if (nvs_err == ESP_OK) nvs_err = nvs_commit(sys_state.nvs_handle);
+
+            if (nvs_err != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to persist config to NVS: %s", esp_err_to_name(nvs_err));
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to save config to NVS");
+                return ESP_FAIL;
+            }
+
             xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
             sys_state.threshold_top = top;
             sys_state.threshold_bottom = bottom;
@@ -577,14 +591,6 @@ static esp_err_t config_post_handler(httpd_req_t *req)
             sys_state.fill_progress_timeout_ms = fill_progress_timeout;
             sys_state.flow_rate_l_per_min = flow_rate;
             xSemaphoreGive(sys_state_mutex);
-            
-            // Save to NVS
-            nvs_set_u32(sys_state.nvs_handle, NVS_KEY_THRESHOLD_TOP, top);
-            nvs_set_u32(sys_state.nvs_handle, NVS_KEY_THRESHOLD_BOTTOM, bottom);
-            nvs_set_u32(sys_state.nvs_handle, NVS_KEY_VALVE_TIMEOUT_MAX, timeout);
-            nvs_set_u32(sys_state.nvs_handle, NVS_KEY_FILL_PROGRESS_TIMEOUT, fill_progress_timeout);
-            nvs_set_u32(sys_state.nvs_handle, NVS_KEY_FLOW_RATE, (uint32_t)(flow_rate * 100.0f));  // Store as int * 100
-            nvs_commit(sys_state.nvs_handle);
             
             char response[256];
             snprintf(response, sizeof(response),
