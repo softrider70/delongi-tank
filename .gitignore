@@ -1,0 +1,48 @@
+# Build outputs
+/build/
+*.o
+*.a
+*.so
+.build_number
+.last_version
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Version files (auto-generated)
+include/version.h
+
+# sdkconfig (board-specific, kept in Git for reference)
+# sdkconfig.old
+
+# Local diagnostics and ad-hoc experiment artifacts
+tools/__pycache__/
+*_monitor.txt
+*serial*.txt
+build-output.txt
+build_output.txt
+build_errors.txt
+build_final.txt
+build_log_final.txt
+build.log
+boot_output.txt
+final_http_test.txt
+http_debug.txt
+http_handler_logs.txt
+sensor_init_logs.txt
+ui-mockup.html
+wifi_client_monitor.txt
+wifi_fixed_final.txt
+wifi_optimized_serial.txt
+wifi_test_monitor.txt

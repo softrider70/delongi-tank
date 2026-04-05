@@ -5,7 +5,7 @@
             "name": "ESP-IDF GDB",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/${command:espIdf.getProjectName}.elf",
+            "program": "${workspaceFolder}/build/delongi-tank.elf",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",

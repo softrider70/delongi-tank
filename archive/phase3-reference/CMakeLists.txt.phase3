@@ -1,0 +1,46 @@
+# delongi-tank - Phase 3 Integration Guide
+# CMakeLists.txt Update for WiFi + HTTP API
+
+idf_component_register(
+    SRCS 
+        # Phase 1-2: Core
+        main.c
+        # Phase 3: WiFi & HTTP
+        wifi_net.c
+        http_handlers.c
+    
+    INCLUDE_DIRS 
+        .
+        ../config
+    
+    REQUIRES
+        # Core
+        freertos
+        esp_driver_gpio
+        esp_driver_i2c
+        nvs_flash
+        esp_timer
+        
+        # Phase 3: WiFi & HTTP
+        esp_wifi
+        esp_netif
+        esp_event
+        esp_http_server
+        mdns
+        esp_sntp
+    
+    LDFLAGSFILES defs.ld
+)
+
+# ============================================================================
+# Optional: Enable HTTP Server debug logging
+# ============================================================================
+# target_compile_options(${COMPONENT_LIB} PRIVATE -DENABLE_HTTP_SERVER_DEBUG)
+
+# ============================================================================
+# Create default sdkconfig values for Phase 3
+# ============================================================================
+# set(SDKCONFIG_DEFAULTS
+#     sdkconfig.defaults
+#     sdkconfig.defaults.phase3
+# )

@@ -81,6 +81,11 @@
 #define NVS_KEY_THRESHOLD_BOTTOM        "thresh_bottom"  // Tank LEER
 #define NVS_KEY_VALVE_TIMEOUT_MAX       "timeout_max"
 #define NVS_KEY_FILL_PROGRESS_TIMEOUT   "fill_prog_to"
+#define NVS_KEY_FLOW_RATE               "flow_rate_l_per_min"
+#define NVS_KEY_VALVE_OPEN_COUNT        "valve_opens"
+#define NVS_KEY_EMERGENCY_COUNT         "emerg_count"
+#define NVS_KEY_TOTAL_OPEN_TIME_MS      "open_time_ms"
+#define NVS_KEY_TOTAL_LITERS_CENTI      "total_liters_cent"
 #define NVS_KEY_LAST_FULL_TIMESTAMP     "last_full"
 #define NVS_KEY_ERROR_LOG               "error_log"
 

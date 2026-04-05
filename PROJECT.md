@@ -3,13 +3,20 @@ project_name: delongi-tank
 author: user
 version: 0.1.0
 description: |
-  Automatisiertes Wassertank-Managementsystem für Kaffeemaschinen.
-  ESP32-basierte Füllstandsüberwachung mit ToF-Sensor, automatischer Ventilsteuerung,
-  WiFi-Webserver-UI und NVS-basierter Konfigurationsspeicherung.
-  Sichere Fallback-Konfiguration bei WiFi-Verbindungsfehlern.
+  Automatisiertes Wassertank-Managementsystem fuer Kaffeemaschinen.
+  ESP32-basierte Fuellstandsueberwachung mit ToF-Sensor, automatischer Ventilsteuerung,
+  WiFi-Webserver-UI, NVS-basierter Konfigurationsspeicherung und integrierter Notaus-Logik.
+  Die aktive Implementierung liegt in components/main/main.c.
 
 target_board: esp32  # ESP32-DEVKITC-V4 (38-pin)
 target_version: ESP-IDF 6.0.0
+
+active_runtime:
+  entrypoint: components/main/main.c
+  archived_reference_path: archive/phase3-reference
+  versioning:
+    generated_header: include/version.h
+    generator: tools/increment_build.py
 
 components:
   # ESP-IDF built-in components
@@ -26,10 +33,11 @@ external_dependencies:
   - MOSFET control circuit (GPIO-based PWM/digital)
 
 security:
-  nvs_encryption: true       # WiFi credentials verschlüsselt speichern
-  secure_boot: false         # Später optional
-  flash_encryption: false    # Später optional
-  watchdog: true             # Hardware-Watchdog für Task-Überwachung
+  nvs_encryption: true       # WiFi credentials persistent speichern
+  secure_boot: false         # Spaeter optional
+  flash_encryption: false    # Spaeter optional
+  watchdog: true             # Framework-/Task-Schutz aktiv
+  emergency_stop_persistent: true
 
 hardware:
   board: ESP32-DEVKITC-V4 (38-pin, dual-core, 520KB SRAM)
@@ -47,20 +55,74 @@ hardware:
     - 5V Power Supply Module
 
 features:
-  - Füllstandsüberwachung via ToF-Sensor (Abstandsmessung von oben)
-  - Automatische Ventilsteuerung (Befüllung/Entleerung)
+  - Fuellstandsueberwachung via ToF-Sensor (Abstandsmessung von oben)
+  - Automatische Ventilsteuerung (Befuellung/Entleerung)
+  - Manuelle Befuellung ueber Web-UI und API
   - WiFi-Konnektivität mit Fallback AP-Modus
   - Web-UI (iPhone15-optimiert, pure HTML/CSS/JS)
-  - NVS-Speicherung (Credentials, Grenzwerte, Konfiguration)
+  - NVS-Speicherung (Credentials, Grenzwerte, Konfiguration, Notaus-Status)
   - Hardware-Watchdog für Task-Sicherheit
-  - Timeout-Schutz beim Befüllen (Notaus)
+  - Timeout-Schutz beim Befuellen
+  - Fill-Progress-Timeout fuer automatische Befuellung
+  - Persistente Notaus-Logik mit Fehlergrund
+  - Build-/App-Version in Status und UI
+  - Gesamt-Literzaehler aus Ventil-Offenzeit und Durchflusswert
   - Brownout-Schutz (sofort Ventil deaktivieren)
 
+chat_requirements:
+  - App-/Build-Version muss sichtbar und nachvollziehbar sein
+  - Notaus darf sich nicht automatisch zuruecksetzen
+  - 10 L/min muss als konfigurierbarer Durchflusswert vorhanden sein
+  - Zaehler muessen in der UI sichtbar sein
+  - Validierung der Konfigurationsseite muss funktionieren
+  - Historische Parallelimplementierungen duerfen den aktiven Buildpfad nicht verdecken
+
+api:
+  endpoints:
+    - GET /
+    - GET /api/status
+    - GET /api/config
+    - POST /api/config
+    - POST /api/valve/manual
+    - POST /api/emergency_stop
+    - GET /api/wifi/status
+    - POST /api/wifi/config
+    - POST /api/system/reset
+
+config_runtime:
+  threshold_top_cm: configurable
+  threshold_bottom_cm: configurable
+  timeout_max_ms: configurable
+  fill_progress_timeout_ms: configurable
+  flow_rate_l_per_min:
+    configurable: true
+    default: 10.0
+
+ui_runtime:
+  sections:
+    - dashboard
+    - settings
+    - wifi
+  displays:
+    - tank_level_cm
+    - fill_percent
+    - app_version
+    - emergency_state
+    - emergency_reason
+    - manual_fill_state
+    - total_liters
+    - wifi_connected
+  validation:
+    - top_and_bottom_numeric
+    - top_smaller_than_bottom
+    - timeout_min_1000_ms
+    - fill_progress_timeout_min_1000_ms
+    - flow_rate_between_0_1_and_50
+
 notes: |
-  - Alle Grenzwerte sind im runtime in der UI einstellbar und persistent
-  - Keep it simple: Keine komplexen HTML-Techniken, mobile-first für iPhone
-  - Task-Architektur: Sensor-Task + Ventil-Task (oder kombiniert mit Priority)
-  - Webserver läuft im AP-Modus, wenn WiFi-Verbindung fehlschlägt
-  - Sensor-Messwertlogik: je kleiner Abstand = Tank voller
-  - OBEN-Grenzwert: Tank VOLL (kleiner Abstand)
-  - UNTEN-Grenzwert: Tank LEER (großer Abstand)
+  - Alle Grenzwerte sind zur Laufzeit in der UI einstellbar und persistent.
+  - Keep it simple: keine externe Frontend-Toolchain, mobile-first, eingebettete UI.
+  - Sensor-Messwertlogik: je kleiner Abstand = Tank voller.
+  - OBEN-Grenzwert: Tank VOLL (kleiner Abstand).
+  - UNTEN-Grenzwert: Tank LEER (grosser Abstand).
+  - Historische Phase-3-Dateien wurden in archive/phase3-reference verschoben.

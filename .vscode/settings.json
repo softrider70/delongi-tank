@@ -11,6 +11,13 @@
         "editor.formatOnSave": false
     },
     "idf.flashBaudRate": "921600",
-    "idf.openOcdConfigs": ["interface/ftdi/esp32_devkitj_v1.cfg", "target/esp32.cfg"],
-    "idf.showOnboardingOnInit": false
+    "idf.openOcdConfigs": [
+        "board/esp32-wrover-kit-3.3v.cfg"
+    ],
+    "idf.showOnboardingOnInit": false,
+    "idf.currentSetup": "C:\\esp\\v6.0\\esp-idf",
+    "idf.customExtraVars": {
+        "IDF_TARGET": "esp32"
+    },
+    "idf.portWin": "COM3"
 }
