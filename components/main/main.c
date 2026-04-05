@@ -1637,9 +1637,11 @@ static esp_err_t ota_start_handler(httpd_req_t *req)
         return ESP_OK;
     }
 
-    if (strncmp(url, "https://", 8) != 0) {
+    bool is_https = (strncmp(url, "https://", 8) == 0);
+    bool is_http = (strncmp(url, "http://", 7) == 0);
+    if (!is_https && !is_http) {
         send_json_response(req,
-            "{\"status\":\"ERROR\",\"message\":\"Nur HTTPS OTA erlaubt\"}");
+            "{\"status\":\"ERROR\",\"message\":\"URL muss mit http:// oder https:// beginnen\"}");
         return ESP_OK;
     }
 

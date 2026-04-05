@@ -68,6 +68,11 @@ features:
   - Build-/App-Version in Status und UI
   - Gesamt-Literzaehler aus Ventil-Offenzeit und Durchflusswert
   - Brownout-Schutz (sofort Ventil deaktivieren)
+  - Stack-Monitoring mit persistenter Warnmeldung
+  - Sensor-Recovery (manueller Reinit + Auto-Reinit bei invalid Reads)
+  - Diagnosetab mit Sensor- und CPU-Livewerten
+  - OTA-Update per REST-Endpoint mit Statusabfrage
+  - Umschaltbarer USB/OTA-Flash-Workflow via `tools/flash-mode.ps1`
 
 chat_requirements:
   - App-/Build-Version muss sichtbar und nachvollziehbar sein
@@ -84,9 +89,15 @@ api:
     - GET /api/config
     - POST /api/config
     - POST /api/valve/manual
+    - POST /api/valve/stop
     - POST /api/emergency_stop
     - GET /api/wifi/status
     - POST /api/wifi/config
+    - POST /api/counters/reset
+    - POST /api/warnings/reset
+    - POST /api/sensor/reset
+    - POST /api/ota/start
+    - GET /api/ota/status
     - POST /api/system/reset
 
 config_runtime:
@@ -103,6 +114,7 @@ ui_runtime:
     - dashboard
     - settings
     - wifi
+    - diagnostics
   displays:
     - tank_level_cm
     - fill_percent
@@ -112,6 +124,15 @@ ui_runtime:
     - manual_fill_state
     - total_liters
     - wifi_connected
+    - sensor_last_raw_mm
+    - sensor_invalid_read_count
+    - sensor_fallback_reuse_count
+    - sensor_stale
+    - cpu_core0_percent
+    - cpu_core1_percent
+    - cpu_top_task
+    - cpu_top_task_percent
+    - cpu_task_count
   validation:
     - top_and_bottom_numeric
     - top_smaller_than_bottom
@@ -126,3 +147,6 @@ notes: |
   - OBEN-Grenzwert: Tank VOLL (kleiner Abstand).
   - UNTEN-Grenzwert: Tank LEER (grosser Abstand).
   - Historische Phase-3-Dateien wurden in archive/phase3-reference verschoben.
+  - OTA-Partitionierung ist auf `partitions_ota_custom.csv` umgestellt (groessere A/B-App-Slots).
+  - OTA kann fuer lokalen VS-Code-Workflow via HTTP oder HTTPS gestartet werden.
+  - Flash-Modus ist zur Laufzeit per Script schaltbar: `tools/flash-mode.ps1 -Mode usb|ota`.

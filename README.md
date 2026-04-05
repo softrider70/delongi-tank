@@ -80,9 +80,15 @@ Der aktuelle Firmwarepfad registriert folgende Endpunkte:
 - `GET /api/config`
 - `POST /api/config`
 - `POST /api/valve/manual`
+- `POST /api/valve/stop`
 - `POST /api/emergency_stop`
 - `GET /api/wifi/status`
 - `POST /api/wifi/config`
+- `POST /api/counters/reset`
+- `POST /api/warnings/reset`
+- `POST /api/sensor/reset`
+- `POST /api/ota/start`
+- `GET /api/ota/status`
 - `POST /api/system/reset`
 
 ## Statusmodell
@@ -90,10 +96,14 @@ Der aktuelle Firmwarepfad registriert folgende Endpunkte:
 `GET /api/status` liefert unter anderem:
 
 - Sensorstatus inklusive Fuellstand in Prozent
+- Sensor-Diagnose (`last_raw_mm`, `invalid_read_count`, `fallback_reuse_count`, `stale`)
 - Ventilstatus
 - manueller Befuellungsstatus
 - Gesamt-Literzaehler
 - Notaus-Flag und Notaus-Grund
+- Stack-Warnstatus und Warnmeldung
+- CPU-Laufzeitdaten (`cpu_core0_percent`, `cpu_core1_percent`, `cpu_top_task`, `cpu_top_task_percent`, `cpu_task_count`)
+- OTA-Status (`phase`, `message`, `last_error`, `in_progress`, `target_version`)
 - App-Version
 - WiFi-Verbindungsstatus
 - konfigurierte Timeouts und Durchflussparameter
@@ -113,6 +123,14 @@ Die aktuelle Firmware validiert Konfiguration wie folgt:
 - AP-Fallback-IP: `10.1.1.1`
 - WiFi-Status und Credential-Update sind ueber dedizierte Endpunkte verfuegbar
 - HTTP-Oberflaeche ist sowohl fuer AP- als auch fuer STA-Betrieb vorgesehen
+
+## OTA-Update
+
+- Partitionierung ist OTA-optimiert ueber `partitions_ota_custom.csv`
+- `POST /api/ota/start` erwartet `{ "url": "http://.../delongi-tank.bin" }` oder `https://...`
+- `GET /api/ota/status` liefert den Laufstatus und Fehlerdetails
+- Erfolgreiches OTA fuehrt automatisch einen Neustart aus
+- Fuer lokalen VS-Code-Workflow ist HTTP explizit erlaubt (LAN)
 
 ## Build und Flash
 
@@ -134,6 +152,35 @@ idf.py build
 idf.py -p COM3 flash
 ```
 
+### USB/OTA Flash-Umschaltung (empfohlen)
+
+Das Projekt enthaelt `tools/flash-mode.ps1` fuer einen einheitlichen Workflow.
+
+USB:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\flash-mode.ps1 -Mode usb -UsbPort COM3
+```
+
+OTA:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\flash-mode.ps1 -Mode ota -DeviceIp 192.168.1.50
+```
+
+Optional mit expliziter Host-IP:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\flash-mode.ps1 -Mode ota -DeviceIp 192.168.1.50 -HostIp 192.168.1.100 -HttpPort 8070
+```
+
+Was der OTA-Modus automatisch macht:
+
+- Build ausfuehren
+- lokalen HTTP-Bin-Server starten
+- OTA per API triggern
+- OTA-Status bis Erfolg/Fehler pollen
+
 ### Monitor
 
 ```powershell
@@ -145,6 +192,8 @@ idf.py -p COM3 monitor
 - `components/main/main.c`: aktive Firmware inkl. API und UI
 - `include/config.h`: Konfigurationskonstanten und Endpunkte
 - `include/version.h`: generierte Versionsinformation
+- `partitions_ota_custom.csv`: OTA-optimierte 4MB-Partitionierung (A/B-Slots)
+- `tools/flash-mode.ps1`: USB/OTA Flash-Umschalter fuer VS Code Terminal
 - `tools/increment_build.py`: Buildnummer-Generierung
 - `PROJECT.md`: kompakte Projektspezifikation auf Basis des aktuellen Stands
 
@@ -152,6 +201,8 @@ idf.py -p COM3 monitor
 
 - `sdkconfig` enthaelt die aktuell genutzte lokale Build-Konfiguration und kann sich stark aendern.
 - Historische Phase-3-Referenzen liegen absichtlich im Archiv, damit die aktive Implementierung klar erkennbar bleibt.
+- Der Diagnose-Reiter in der UI zeigt Sensor- und CPU-Livewerte.
+- Gruene Reset-Taste unterstuetzt: kurzer Druck (Warnung reset), 3s halten (Zaehler reset), Doppeltipp (Sensor-Reinit).
 - GPIO pin assignments
 - UART baudrates
 - WiFi/BLE settings
@@ -170,31 +221,21 @@ idf.py menuconfig
 
 ## Development Workflow
 
-1. **Edit code** in `src/main.c` or `include/config.h`
-2. **Build:** `/build-project`
-3. **Flash:** `/upload-firmware` (fast iteration)
-4. **Test & Debug**
-5. **Commit:** `/commit` (auto-generates commit message)
+1. Edit code in `components/main/main.c` or `include/config.h`
+2. Build: `idf.py build`
+3. Flash:
+    - USB: `tools/flash-mode.ps1 -Mode usb`
+    - OTA: `tools/flash-mode.ps1 -Mode ota -DeviceIp <ip>`
+4. Test & Debug (`idf.py -p COM3 monitor`)
+5. Commit changes
 
-## Useful Skills
+## Runtime-Highlights
 
-- **`/build-project`** — Compile firmware
-- **`/upload-firmware`** — Fast app update (~3 seconds)
-- **`/upload`** — Smart session router
-- **`/commit`** — Git commit with auto-message
-
-## Adding Features
-
-Use Copilot skills to extend functionality:
-
-```
-/add-ota          Enable OTA firmware updates
-/add-webui        Add responsive web dashboard
-/add-library      Manage external components
-/add-security     Enable Secure Boot, encryption
-/setup-ci         GitHub Actions CI/CD
-/add-profiling    Performance monitoring
-```
+- Fallback-AP wird nur bei fehlgeschlagenen STA-Reconnects aktiviert
+- DNS-Captive-Portal startet/stopt passend zum AP-Modus
+- Stack-Monitoring mit persistenter UI-Warnmeldung
+- Sensor-Auto-Recovery (Auto-Reinit bei wiederholten invalid Reads)
+- iOS-optimierte 4-Tab-Oberflaeche (Dashboard, Settings, WiFi, Diagnose)
 
 ## Documentation
 
@@ -221,11 +262,9 @@ idf.py build
 
 ## Next Steps
 
-1. Update `PROJECT.md` with hardware details
-2. Configure `include/config.h` for your board setup
-3. Implement application in `src/main.c`
-4. Test with `/upload-firmware`
-5. When production-ready, use `/add-security`
+1. OTA-Bedienung direkt in Diagnose-UI ergaenzen (URL + Start + Live-Status)
+2. Optional HTTPS-Zertifikatspruefung fuer OTA-Hardening aktivieren
+3. Optional VS Code `tasks.json` fuer 1-Klick USB/OTA-Task anlegen
 
 ---
 
