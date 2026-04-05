@@ -19,6 +19,7 @@
 #define GPIO_I2C_SDA        21      // VL53L0X Sensor (Data)
 #define GPIO_I2C_SCL        22      // VL53L0X Sensor (Clock)
 #define GPIO_VALVE_CONTROL  16      // MOSFET-Modul für 12V Magnetventil
+#define GPIO_TOUCH_KEY      33      // Touch-Key T8 fuer manuelles Befuellen (nur ESP32 classic)
 
 // ============================================================================
 // I2C Configuration (VL53L0X)
@@ -50,6 +51,14 @@
 #define SENSOR_SAMPLES                  3       // Schnellere Mittelung fuer schnelleren Sicherheitsstopp
 #define TASK_SENSOR_INTERVAL_MS         250     // Task delay für sensor_task
 
+// Touch-Key fuer manuelles Befuellen
+#define TOUCH_KEY_SAMPLE_MS             60      // Polling fuer Touch-Erkennung
+#define TOUCH_KEY_FILTER_PERIOD_MS      10      // IIR Filter-Zyklus
+#define TOUCH_KEY_CALIBRATION_SAMPLES   12      // Messungen fuer Start-Baseline
+#define TOUCH_KEY_THRESHOLD_PERCENT     75      // Touch erkannt unter 75% der Basislinie
+#define TOUCH_KEY_DEBOUNCE_COUNT        2       // Touch muss 2 Samples stabil sein
+#define TOUCH_KEY_RELEASE_COUNT         2       // Release muss 2 Samples stabil sein
+
 // ============================================================================
 // Valve Control Configuration (Solenoid, via MOSFET)
 // ============================================================================
@@ -62,6 +71,7 @@
 // Füllfortschritt: Während geöffnetem Ventil muss der Sensorabstand kleiner werden
 #define FILL_PROGRESS_MIN_DELTA_CM      1       // Mindestens 1 cm Verringerung
 #define FILL_PROGRESS_TIMEOUT_DEFAULT   5000    // Innerhalb von 5s muss Fortschritt sichtbar sein
+#define FILL_PROGRESS_CONFIRM_SAMPLES   3       // Fortschritt erst nach mehreren stabilen Samples bestaetigen
 
 // Ventil-PWM oder Digital
 #define VALVE_USE_PWM                   0       // 0: Digital (on/off), 1: PWM
@@ -171,9 +181,14 @@
 #define TASK_STACK_SERVER               8192
 #define TASK_STACK_WATCHDOG             2048
 #define TASK_STACK_WIFI                 8192    // Increased from 4096 for complex initialization
+#define TASK_STACK_TOUCH                3072    // Touch-Key Polling
+#define TASK_STACK_STACK_MONITOR        3072    // Stack-Überwachung für Laufzeitwarnungen
 
 // Task Intervals
 // (Already defined in Task Configuration section above)
+
+#define TASK_STACK_MONITOR_INTERVAL_MS  2000    // Alle 2s Stack-Reserve prüfen
+#define STACK_USAGE_WARNING_PERCENT     96      // UI-Warnung erst bei sehr hoher Stack-Auslastung
 
 // ============================================================================
 // Hardware Watchdog Configuration

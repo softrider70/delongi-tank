@@ -6,6 +6,7 @@ idf_component_register(
         driver
         esp_driver_gpio
         esp_driver_i2c
+        esp_driver_touch_sens
         esp_wifi
         esp_http_server
         mbedtls
