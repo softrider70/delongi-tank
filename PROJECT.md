@@ -82,6 +82,16 @@ chat_requirements:
   - Validierung der Konfigurationsseite muss funktionieren
   - Historische Parallelimplementierungen duerfen den aktiven Buildpfad nicht verdecken
 
+recent_changes:
+  - date: 2026-04-06
+    summary: Branch renamed to main and Bosch project synced with upstream delonghi updates
+    details: |
+      - `master` was renamed to `main` and now tracks `origin/main`.
+      - Remote `origin/master` was deleted.
+      - Upstream commits from `softrider70/delonghi-tank` were merged, including manual-fill stop behavior at OBEN.
+      - OTA diagnostics were added to the Diagnostics UI.
+      - Bosch-specific naming and project settings were preserved.
+
 api:
   endpoints:
     - GET /

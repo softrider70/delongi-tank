@@ -10,6 +10,16 @@ Die vorherige Phase-3-Aufteilung auf mehrere Referenzdateien wurde archiviert un
 
 - `archive/phase3-reference/`
 
+## Aktuelle Repository-Änderungen
+
+- Branch `master` wurde in `main` umbenannt.
+- Remote `origin/master` wurde entfernt; `origin/main` ist der primäre Branch.
+- Das Projekt wurde mit `upstream/main` von `softrider70/delongi-tank` synchronisiert.
+- Funktionale Ergänzung: Befüllen stoppt beim Erreichen des OBEN-Grenzwerts.
+- Der `BEFUELLEN`-Button ist deaktiviert, wenn der Tank bereits voll ist.
+- OTA-Diagnosewerte wurden in den Diagnostics-Tab aufgenommen.
+- `backup-before-upstream-merge` bleibt als Sicherungsbranch erhalten.
+
 ## Implementierter Funktionsumfang
 
 ### Tank- und Ventillogik
