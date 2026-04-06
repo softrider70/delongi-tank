@@ -2207,7 +2207,7 @@ CONFIG_LOG_IN_IRAM=y
 # default:
 CONFIG_LWIP_ENABLE=y
 # default:
-CONFIG_LWIP_LOCAL_HOSTNAME="delongi-tank"
+CONFIG_LWIP_LOCAL_HOSTNAME="delonghi-tank"
 # default:
 CONFIG_LWIP_TCPIP_TASK_PRIO=18
 # default:

@@ -1,4 +1,4 @@
-# delongi-tank
+# delonghi-tank
 
 ESP32-Firmware fuer die Ueberwachung und Steuerung eines Kaffeemaschinen-Wassertanks mit VL53L0X, Ventilsteuerung, WiFi-Weboberflaeche und persistenter Konfiguration.
 
@@ -127,7 +127,7 @@ Die aktuelle Firmware validiert Konfiguration wie folgt:
 ## OTA-Update
 
 - Partitionierung ist OTA-optimiert ueber `partitions_ota_custom.csv`
-- `POST /api/ota/start` erwartet `{ "url": "http://.../delongi-tank.bin" }` oder `https://...`
+- `POST /api/ota/start` erwartet `{ "url": "http://.../delonghi-tank.bin" }` oder `https://...`
 - `GET /api/ota/status` liefert den Laufstatus und Fehlerdetails
 - Erfolgreiches OTA fuehrt automatisch einen Neustart aus
 - Fuer lokalen VS-Code-Workflow ist HTTP explizit erlaubt (LAN)

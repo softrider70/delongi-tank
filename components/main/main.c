@@ -1,5 +1,5 @@
 /**
- * delongi-tank: Automated Water Tank Management System
+ * delonghi-tank: Automated Water Tank Management System
  * ESP32-based automatic filling control for coffee machines with VL53L0X ToF sensor
  * 
  * Main application entry point - Phase 1 Implementation
@@ -66,7 +66,7 @@
 // Global Constants & Tags
 // ============================================================================
 
-static const char *TAG = "delongi-tank-main";
+static const char *TAG = "delonghi-tank-main";
 
 #define API_VERSION "1.0"
 #define I2C_DEVICE_SCL_WAIT_US 8000
@@ -2086,7 +2086,7 @@ static esp_err_t index_handler(httpd_req_t *req)
     // Lightweight HTML UI - no emojis, minimal size for reliable transfer
     static const char index_html[] = R"html(<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DELONGI TANK</title>
+<title>DELONGHI TANK</title>
 <style>
 body{font-family:Arial,sans-serif;background:linear-gradient(180deg,#5d76df 0%,#7ea7ff 100%);margin:0;padding:10px}
 .container{max-width:460px;margin:0 auto;background:white;padding:12px;border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,0.18)}
@@ -2139,7 +2139,7 @@ input{width:100%;padding:8px;margin:0 0 8px 0;box-sizing:border-box;border-radiu
 </style></head>
 <body>
 <div class="container">
-<h1>DELONGI TANK</h1>
+<h1>DELONGHI TANK</h1>
 
 <div class="tabs">
 <button class="tab-btn active" onclick="switchTab(event, 'dashboard')">Dashboard</button>
@@ -3652,7 +3652,7 @@ static httpd_handle_t start_webserver(void)
 void app_main(void)
 {
     ESP_LOGI(TAG, "===========================================");
-    ESP_LOGI(TAG, "🚀 delongi-tank %s (Build #%d)", VERSION_STRING, BUILD_NUMBER);
+    ESP_LOGI(TAG, "🚀 delonghi-tank %s (Build #%d)", VERSION_STRING, BUILD_NUMBER);
     ESP_LOGI(TAG, "   Compiled: %s", BUILD_TIMESTAMP);
     
     // Get chip info (v6.0 API change: requires pointer argument)

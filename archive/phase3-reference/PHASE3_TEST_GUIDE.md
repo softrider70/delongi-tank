@@ -1,4 +1,4 @@
-# delongi-tank Phase 3: Praktischer Test-Guide
+# delonghi-tank Phase 3: Praktischer Test-Guide
 
 ## 🎯 Quick Start
 
@@ -6,7 +6,7 @@ Nach dem Flash auf dem ESP32:
 
 ```
 1. ESP32 startet
-2. WiFi AP aktiviert → SSID "delongi-tank-ap"
+2. WiFi AP aktiviert → SSID "delonghi-tank-ap"
 3. HTTP Server läuft auf 10.1.1.1
 4. Verbinde dich mit dem AP
 5. Öffne http://10.1.1.1 im Browser
@@ -27,7 +27,7 @@ Nach dem Flash auf dem ESP32:
 **Erwartete Log-Ausgabe:**
 ```
 I (456) WIFI_NET: WiFi initialization complete
-I (457) WIFI_NET:   AP:   delongi-tank-ap / 12345678 @ 10.1.1.1
+I (457) WIFI_NET:   AP:   delonghi-tank-ap / 12345678 @ 10.1.1.1
 I (465) HTTP_API: Starting HTTP server on port 80
 I (501) HTTP_API: HTTP server started successfully
 ```
@@ -36,7 +36,7 @@ I (501) HTTP_API: HTTP server started successfully
 
 | Test | Aktion | Ergebnis |
 |------|--------|----------|
-| AP visible | In WiFi-Liste suchen | SSID "delongi-tank-ap" sichtbar |
+| AP visible | In WiFi-Liste suchen | SSID "delonghi-tank-ap" sichtbar |
 | AP connect | Mit PW "12345678" verbinden | Verbindung erfolgreich |
 | IP erhalten | `ipconfig getifaddr en0` (Mac) | 10.1.1.x erhalten |
 | Ping | `ping 10.1.1.1` | ≤ 5ms Latenz |
@@ -212,14 +212,14 @@ wsl --update
 # Windows Settings → WSL Integration aktivieren
 ```
 
-### Problem: mDNS (delongi-tank.local) funktioniert nicht
+### Problem: mDNS (delonghi-tank.local) funktioniert nicht
 
 ```bash
 # Das ist OK für Phase 3 - nur STA Mode unterstützt
 # Workaround: 10.1.1.1 verwenden bis STA connected
 
 # Nach STA Connection sollte es funktionieren:
-ping delongi-tank.local
+ping delonghi-tank.local
 ```
 
 ---
@@ -253,10 +253,10 @@ esp_http_server_set_debug(server, 7);  // 7 = max debug level
 
 ```bash
 # WiFi Packets mitschneiden
-tcpdump -i en0 -n tcp.port==80 -w delongi.pcap
+tcpdump -i en0 -n tcp.port==80 -w delonghi.pcap
 
 # Später analysieren:
-wireshark delongi.pcap
+wireshark delonghi.pcap
 ```
 
 ### Memory Profiling
@@ -284,7 +284,7 @@ ESP_LOGI(TAG, "Valve GPIO = %d", gpio_get_level(GPIO_VALVE_CTRL));
 ### iPhone/iPad Test
 
 ```
-1. "delongi-tank-ap" in WiFi SSID wählen
+1. "delonghi-tank-ap" in WiFi SSID wählen
 2. Password: 12345678
 3. Safari öffnen
 4. URL: 10.1.1.1 eingeben
@@ -295,7 +295,7 @@ ESP_LOGI(TAG, "Valve GPIO = %d", gpio_get_level(GPIO_VALVE_CTRL));
 ### Android Test
 
 ```
-1. WiFi-Einstellungen → "delongi-tank-ap"
+1. WiFi-Einstellungen → "delonghi-tank-ap"
 2. Password eingeben
 3. Chrome Browser
 4. Adresse: 10.1.1.1

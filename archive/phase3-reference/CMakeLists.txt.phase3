@@ -1,4 +1,4 @@
-# delongi-tank - Phase 3 Integration Guide
+# delonghi-tank - Phase 3 Integration Guide
 # CMakeLists.txt Update for WiFi + HTTP API
 
 idf_component_register(

@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 /**
- * delongi-tank Configuration Header
+ * delonghi-tank Configuration Header
  * 
  * Wassertank-Managementsystem für Kaffeemaschinen
  * Hardware: ESP32-DEVKITC-V4 mit VL53L0X ToF-Sensor + 12V Solenoid Ventil
@@ -82,7 +82,7 @@
 // NVS (Non-Volatile Storage) Configuration
 // ============================================================================
 
-#define NVS_NAMESPACE                   "delongi-tank"
+#define NVS_NAMESPACE                   "delonghi-tank"
 
 // NVS Keys für Persistierung
 #define NVS_KEY_WIFI_SSID               "wifi_ssid"
@@ -109,7 +109,7 @@
 // WiFi Configuration
 // ============================================================================
 
-#define WIFI_SSID_AP_MODE               "delongi-tank-setup"    // AP-Modus SSID
+#define WIFI_SSID_AP_MODE               "delonghi-tank-setup"    // AP-Modus SSID
 #define WIFI_PASS_AP_MODE               "password"              // AP-Modus Password (simple, ASCII)
 #define WIFI_CHANNEL_AP                 6                        // Less congestion than channel 1
 #define WIFI_MAX_CONN_AP                8                        // Increased from 4 to 8
@@ -129,10 +129,10 @@
 #define AP_MODE_DNS_SECONDARY           "8.8.8.8"
 
 // === mDNS & Hostname Configuration ===
-// mDNS ermöglicht Zugriff via "delongi-tank.local"
+// mDNS ermöglicht Zugriff via "delonghi-tank.local"
 // Hostname wird im WiFi-Router angezeigt
-#define MDNS_HOSTNAME                   "delongi-tank"          // z.B. delongi-tank.local
-#define MDNS_INSTANCE_NAME              "Delongi Tank System"
+#define MDNS_HOSTNAME                   "delonghi-tank"          // z.B. delonghi-tank.local
+#define MDNS_INSTANCE_NAME              "Delonghi Tank System"
 #define MDNS_HTTP_SERVICE               "_http"
 #define MDNS_TCP_PROTOCOL               "_tcp"
 #define MDNS_PORT                       80
@@ -215,12 +215,12 @@
 // LOG_LOCAL_LEVEL defined by esp_log.h - do not redefine
 
 // Tag für ESP_LOG_x() Makros
-#define TAG_MAIN                        "delongi-main"
-#define TAG_SENSOR                      "delongi-sensor"
-#define TAG_VALVE                       "delongi-valve"
-#define TAG_SERVER                      "delongi-server"
-#define TAG_NVS                         "delongi-nvs"
-#define TAG_WIFI                        "delongi-wifi"
+#define TAG_MAIN                        "delonghi-main"
+#define TAG_SENSOR                      "delonghi-sensor"
+#define TAG_VALVE                       "delonghi-valve"
+#define TAG_SERVER                      "delonghi-server"
+#define TAG_NVS                         "delonghi-nvs"
+#define TAG_WIFI                        "delonghi-wifi"
 
 // ============================================================================
 // Safety & Error Handling

@@ -1,5 +1,5 @@
 /**
- * delongi-tank: HTTP REST API Handlers
+ * delonghi-tank: HTTP REST API Handlers
  * 
  * This file contains all HTTP endpoint handlers for the REST API.
  * Compile with: -I$(IDF_PATH)/components/esp_http_server/include
@@ -106,7 +106,7 @@ static esp_err_t config_get_handler(httpd_req_t *req)
         sys_state.threshold_top,
         sys_state.threshold_bottom,
         sys_state.timeout_max,
-        "delongi-tank",
+        "delonghi-tank",
         mode == WIFI_MODE_AP ? "AP" : "STA"
     );
     
@@ -244,7 +244,7 @@ const char index_html[] = ""
     "<!DOCTYPE html>"
     "<html><head>"
     "<meta charset='UTF-8'><meta name='viewport' content='width=device-width'>"
-    "<title>delongi-tank</title>"
+    "<title>delonghi-tank</title>"
     "<style>"
     "body{font-family:Arial;background:#f0f0f0;margin:0;padding:10px}"
     ".container{max-width:800px;margin:0 auto;background:#fff;padding:20px;border-radius:8px}"
@@ -260,7 +260,7 @@ const char index_html[] = ""
     "</style>"
     "</head><body>"
     "<div class='container'>"
-    "<h1>🚰 delongi-tank</h1>"
+    "<h1>🚰 delonghi-tank</h1>"
     "<div class='status'>"
     "<h3>Tank-Status</h3>"
     "<p>Pegelstand: <span id='level'>--</span> cm</p>"

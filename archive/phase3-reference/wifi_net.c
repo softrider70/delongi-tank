@@ -1,10 +1,10 @@
 /**
- * delongi-tank: WiFi & Network Initialization
+ * delonghi-tank: WiFi & Network Initialization
  * 
  * Features:
  * - STA mode with SSID/Password from NVS
  * - Automatic AP fallback (10.1.1.1) if STA connection fails
- * - mDNS hostname (delongi-tank.local)
+ * - mDNS hostname (delonghi-tank.local)
  * - SNTP for time synchronization
  */
 
@@ -56,8 +56,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         
         // Start mDNS only after IP acquired
         mdns_init();
-        mdns_hostname_set("delongi-tank");
-        mdns_instance_name_set("delongi-tank Water Tank Controller");
+        mdns_hostname_set("delonghi-tank");
+        mdns_instance_name_set("delonghi-tank Water Tank Controller");
         mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
@@ -246,7 +246,7 @@ static void sntp_sync_time(void)
  * Operation:
  * 1. Initialize network interfaces (STA and AP)
  * 2. Start WiFi with STA config from NVS (fallback to AP if STA fails)
- * 3. Initialize mDNS (delongi-tank.local)
+ * 3. Initialize mDNS (delonghi-tank.local)
  * 4. Sync time via SNTP
  */
 esp_err_t init_wifi(void)
@@ -272,7 +272,7 @@ esp_err_t init_wifi(void)
     ESP_LOGI(TAG, "WiFi initialization complete");
     ESP_LOGI(TAG, "Connect via:");
     ESP_LOGI(TAG, "  - AP:   %s / %s @ %s", WIFI_SSID_DEFAULT, WIFI_PASS_DEFAULT, WIFI_AP_IP);
-    ESP_LOGI(TAG, "  - mDNS: delongi-tank.local (after STA connection)");
+    ESP_LOGI(TAG, "  - mDNS: delonghi-tank.local (after STA connection)");
     
     return ESP_OK;
 }

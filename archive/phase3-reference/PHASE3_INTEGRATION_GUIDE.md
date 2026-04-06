@@ -1,11 +1,11 @@
-# delongi-tank: Phase 3 Integration Guide
+# delonghi-tank: Phase 3 Integration Guide
 ## WiFi + HTTP REST API Implementation
 
 ---
 
 ## 📋 Überblick
 
-Phase 3 fügt dem delongi-tank eine vollständige REST API via WiFi hinzu. Das System läuft jetzt:
+Phase 3 fügt dem delonghi-tank eine vollständige REST API via WiFi hinzu. Das System läuft jetzt:
 - **Phase 1**: Sensoren & Valve Control (lokal)
 - **Phase 2**: Automatischer Betrieb (Auto/Manual)
 - **Phase 3** ✨ **NEUE**: Web-API + WiFi + Mobiltelefon-Steuerung
@@ -45,7 +45,7 @@ Phase 3 fügt dem delongi-tank eine vollständige REST API via WiFi hinzu. Das S
 │        └─────────────────────────────┘            │
 │                    ↓                               │
 │        ┌─────────────────────────────┐            │
-│        │  mDNS: delongi-tank.local   │            │
+│        │  mDNS: delonghi-tank.local   │            │
 │        │  SNTP: Zeit Sync            │            │
 │        └─────────────────────────────┘            │
 └──────────────────────────────────────────────────┘
@@ -191,7 +191,7 @@ curl http://10.1.1.1/api/status
 {
   "status": "OK",
   "timestamp": 1234567890,
-  "device_id": "delongi-tank-001",
+  "device_id": "delonghi-tank-001",
   "sensors": {
     "tank_level_cm": 145,
     "tank_full": 72.5
@@ -223,7 +223,7 @@ curl http://10.1.1.1/api/config
     "timeout_max_ms": 30000,
     "mode_auto": true,
     "wifi": {
-      "ssid": "delongi-tank",
+      "ssid": "delonghi-tank",
       "mode": "AP"
     }
   }
@@ -279,14 +279,14 @@ http://10.1.1.1/
 
 ```bash
 # WiFi AP anschauen
-# SSID: delongi-tank-ap
+# SSID: delonghi-tank-ap
 # PW: 12345678
 # IP: 10.1.1.1
 
 ping 10.1.1.1
 
 # mDNS Test (nach STA connection)
-ping delongi-tank.local
+ping delonghi-tank.local
 ```
 
 ### Test 2: Status API
@@ -352,7 +352,7 @@ Nach Phase 3 sind folgende Verbesserungen möglich:
 
 ```
 I (456) WIFI_NET: WiFi initialization complete
-I (457) WIFI_NET:   AP:   delongi-tank-ap / 12345678 @ 10.1.1.1
+I (457) WIFI_NET:   AP:   delonghi-tank-ap / 12345678 @ 10.1.1.1
 I (458) RADIO: RTOS: Starting RTOS task 0xC
 I (465) HTTP_API: Starting HTTP server on port 80
 I (501) HTTP_API: HTTP server started successfully
@@ -369,10 +369,10 @@ target_compile_options(${COMPONENT_LIB} PRIVATE -DENABLE_HTTP_SERVER_DEBUG)
 
 ```bash
 # Windows: Install Bonjour (iTunes)
-# dann: ping delongi-tank.local
+# dann: ping delonghi-tank.local
 
 # Linux: install avahi-utils
-avahi-browse -a | grep delongi
+avahi-browse -a | grep delonghi
 ```
 
 ---

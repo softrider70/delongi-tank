@@ -29,9 +29,9 @@ The template auto-supports 5 ESP32 variants:
 ```
 
 ## Documentation
-- See `BUILD_GUIDE.md` for manual build/upload procedures
-- See `SECURITY.md` for NVS encryption, Secure Boot, TLS setup
-- See `.github/TEMPLATE_HELP.md` for comprehensive German guide
+- See `README.md` for build, flash, OTA workflow, and operational usage
+- See `PROJECT.md` for the current project specification and hardware/runtime details
+- See `archive/phase3-reference/README.md` for historical Phase-3 context only
 
 ---
 Template Version: 0.1.0

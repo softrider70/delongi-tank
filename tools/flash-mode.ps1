@@ -66,7 +66,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Build fehlgeschlagen."
 }
 
-$binPath = Join-Path $repoRoot "build\delongi-tank.bin"
+$binPath = Join-Path $repoRoot "build\delonghi-tank.bin"
 if (-not (Test-Path $binPath)) {
     throw "Firmware-Binary nicht gefunden: $binPath"
 }
@@ -76,7 +76,7 @@ try {
     $serverProc = Start-Process -FilePath "python" -ArgumentList "-m", "http.server", "$HttpPort", "--bind", "$HostIp" -WorkingDirectory (Join-Path $repoRoot "build") -PassThru -WindowStyle Hidden
     [System.Threading.Thread]::Sleep(1200)
 
-    $otaUrl = "http://$HostIp`:$HttpPort/delongi-tank.bin"
+    $otaUrl = "http://$HostIp`:$HttpPort/delonghi-tank.bin"
     $startUri = "http://$DeviceIp/api/ota/start"
     $statusUri = "http://$DeviceIp/api/ota/status"
     $payload = @{ url = $otaUrl } | ConvertTo-Json -Compress

@@ -1,5 +1,5 @@
 /**
- * delongi-tank: Phase 3 - WiFi + HTTP REST API
+ * delonghi-tank: Phase 3 - WiFi + HTTP REST API
  * This is a patch file showing the Phase 3 additions
  * Merge these functions into main.c
  */
@@ -108,7 +108,7 @@ static httpd_handle_t start_webserver(void)
     httpd_register_uri_handler(server, &index_uri);
     
     ESP_LOGI(TAG, "HTTP server started successfully - all endpoints registered");
-    ESP_LOGI(TAG, "Access from: http://10.1.1.1 (AP mode) or http://delongi-tank.local (mDNS)");
+    ESP_LOGI(TAG, "Access from: http://10.1.1.1 (AP mode) or http://delonghi-tank.local (mDNS)");
     return server;
 }
 
@@ -122,7 +122,7 @@ static httpd_handle_t start_webserver(void)
 void app_main(void)
 {
     ESP_LOGI(TAG, "===========================================");
-    ESP_LOGI(TAG, "delongi-tank %s (Build #%d)", VERSION_STRING, BUILD_NUMBER);
+    ESP_LOGI(TAG, "delonghi-tank %s (Build #%d)", VERSION_STRING, BUILD_NUMBER);
     ESP_LOGI(TAG, "Compiled: %s", BUILD_TIMESTAMP);
     ESP_LOGI(TAG, "===========================================");
     

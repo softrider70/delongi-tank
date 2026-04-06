@@ -1,8 +1,8 @@
-# 📦 delongi-tank Phase 3 - Delivery Package
+# 📦 delonghi-tank Phase 3 - Delivery Package
 
 ## 🎯 Zusammenfassung
 
-**Phase 3** der delongi-tank erweitert das Projekt um eine **vollständige WiFi + REST API**.  
+**Phase 3** der delonghi-tank erweitert das Projekt um eine **vollständige WiFi + REST API**.  
 Jeder ESP32 wird zum webfähigen Gerät für **Fernsteuerung, Monitoring und Integration**.
 
 ---
@@ -216,7 +216,7 @@ idf.py flash -p COM3 monitor           # Windows
 
 ```bash
 # In einer anderen Terminal:
-# 1. SSID suchen: delongi-tank-ap
+# 1. SSID suchen: delonghi-tank-ap
 # 2. Verbinden mit PW: 12345678
 # 3. IP zugewiesen: 10.1.1.1
 
@@ -396,11 +396,11 @@ curl http://10.1.1.1/api/status | jq '.system.free_heap_bytes'  # Heap
 ```bash
 # MacOS/Linux:
 brew install avahi-utils   # oder: apt install avahi-tools
-avahi-browse -a | grep delongi
+avahi-browse -a | grep delonghi
 
 # Windows:
 # Installiere Bonjour (iTunes)
-# Dann funktioniert: ping delongi-tank.local
+# Dann funktioniert: ping delonghi-tank.local
 ```
 
 ---
@@ -419,7 +419,7 @@ avahi-browse -a | grep delongi
 □ idf.py flash ohne Fehler
 □ Monitor zeigt "WiFi initialization complete"
 □ Monitor zeigt "HTTP server started"
-□ SSID "delongi-tank-ap" sichtbar
+□ SSID "delonghi-tank-ap" sichtbar
 □ WiFi Verbindung erfolgreich (10.1.1.1)
 □ curl http://10.1.1.1/api/status funktioniert
 □ HTTP Response ist gültiges JSON
