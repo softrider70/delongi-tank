@@ -2233,6 +2233,17 @@ input{width:100%;padding:8px;margin:0 0 8px 0;box-sizing:border-box;border-radiu
 <div class="status-row"><span>Top Task:</span><span id="cpu-top-task">-</span></div>
 <div class="status-row"><span>Task Last:</span><span id="cpu-top-task-pct">-</span></div>
 <div class="status-row"><span>Tasks Gesamt:</span><span id="cpu-task-count">-</span></div>
+<div style="margin:10px 0 4px 0;font-weight:700;font-size:13px;">OTA & Firmware</div>
+<div class="status-row"><span>OTA-Status:</span><span id="ota-status">-</span></div>
+<div class="status-row"><span>OTA-Phase:</span><span id="ota-phase">-</span></div>
+<div class="status-row"><span>OTA-Meldung:</span><span id="ota-message">-</span></div>
+<div class="status-row"><span>In Arbeit:</span><span id="ota-in-progress">-</span></div>
+<div class="status-row"><span>Aktuelle Version:</span><span id="ota-current-version">-</span></div>
+<div class="status-row"><span>Zielversion:</span><span id="ota-target-version">-</span></div>
+<div class="status-row"><span>Letztes Ergebnis:</span><span id="ota-last-result">-</span></div>
+<div class="status-row"><span>Letzter Fehler:</span><span id="ota-last-error">-</span></div>
+<div class="status-row"><span>Start seit Boot:</span><span id="ota-last-start">-</span></div>
+<div class="status-row"><span>Ende seit Boot:</span><span id="ota-last-end">-</span></div>
 <div style="margin-top:8px;font-size:11px;color:#6b7280">Hinweis: Doppeltipp auf gruene Reset-Taste startet Sensor-Reinit.</div>
 <div id="msg-diagnostics" class="msg" style="display:none"></div>
 </div>
@@ -2243,7 +2254,10 @@ input{width:100%;padding:8px;margin:0 0 8px 0;box-sizing:border-box;border-radiu
 let isFilling = false;
 let isEmergencyActive = false;
 let dashboardTimer = null;
+let dashboardPollTimer = null;
 let dashboardPollInFlight = false;
+let diagnosticsPollTimer = null;
+let diagnosticsPollInFlight = false;
 let settingsSaveInFlight = false;
 let counterResetInFlight = false;
 let hasStickyWarning = false;
@@ -2253,10 +2267,58 @@ let lastResetTapMs = 0;
 let lastStatusTimestamp = 0;
 let stagnantStatusCount = 0;
 const DASHBOARD_REFRESH_MS = 350;
+const DIAGNOSTICS_REFRESH_MS = 2500;
 function scheduleDashboardRefresh(delay){
     if(dashboardTimer) clearTimeout(dashboardTimer);
     dashboardTimer = setTimeout(() => updateDashboard(), delay);
 }
+function scheduleDiagnosticsRefresh(delay = DIAGNOSTICS_REFRESH_MS){
+    if(diagnosticsPollTimer) clearTimeout(diagnosticsPollTimer);
+    diagnosticsPollTimer = setTimeout(() => {
+        if(document.getElementById('diagnostics')?.classList.contains('active')){
+            loadDiagnostics();
+        }
+    }, delay);
+}
+function clearDiagnosticsRefresh(){
+    if(diagnosticsPollTimer) clearTimeout(diagnosticsPollTimer);
+    diagnosticsPollTimer = null;
+}
+function loadDiagnostics(force){
+    if(diagnosticsPollInFlight && !force) return;
+    diagnosticsPollInFlight = true;
+    fetch('/api/ota/status?t=' + Date.now(), {cache: 'no-store'})
+        .then(r => { if(!r.ok) throw new Error('API error: ' + r.status); return r.json(); })
+        .then(d => {
+            const ota = d.ota || {};
+            document.getElementById('ota-status').textContent = d.status || '-';
+            document.getElementById('ota-phase').textContent = ota.phase || '-';
+            document.getElementById('ota-message').textContent = ota.message || '-';
+            document.getElementById('ota-in-progress').textContent = ota.in_progress ? 'Ja' : 'Nein';
+            document.getElementById('ota-current-version').textContent = ota.current_version || '-';
+            document.getElementById('ota-target-version').textContent = ota.target_version || '-';
+            document.getElementById('ota-last-result').textContent = ota.last_result_ok ? 'OK' : 'FAIL';
+            document.getElementById('ota-last-error').textContent = ota.last_error || '-';
+            document.getElementById('ota-last-start').textContent = ota.last_start_ms ? (Number(ota.last_start_ms) / 1000).toFixed(1) + ' s' : '-';
+            document.getElementById('ota-last-end').textContent = ota.last_end_ms ? (Number(ota.last_end_ms) / 1000).toFixed(1) + ' s' : '-';
+        })
+        .catch(e => {
+            console.error('loadDiagnostics failed:', e);
+            const msgEl = document.getElementById('msg-diagnostics');
+            if(msgEl){
+                msgEl.textContent = 'OTA-Status konnte nicht geladen werden';
+                msgEl.className = 'msg error';
+                msgEl.style.display = 'block';
+            }
+        })
+        .finally(() => {
+            diagnosticsPollInFlight = false;
+            if(document.getElementById('diagnostics')?.classList.contains('active')){
+                scheduleDiagnosticsRefresh();
+            }
+        });
+}
+
 function syncSaveButton(){
     const btn = document.getElementById('save-btn');
     if(!btn) return;
@@ -2413,6 +2475,11 @@ function switchTab(evt, t){
     if(evt && evt.target) evt.target.classList.add('active');
   if(t==='settings') loadSettings();
   if(t==='wifi') loadWiFi();
+  if(t==='diagnostics'){
+      loadDiagnostics(true);
+  } else {
+      clearDiagnosticsRefresh();
+  }
 }
 function showMsg(tabId, text, isErr){
   const el = document.getElementById('msg-'+tabId);
@@ -3202,6 +3269,20 @@ static void valve_task(void *pvParameters)
             state_snapshot.manual_fill_active = false;
         }
 
+        if (filling && state_snapshot.sensor_distance_cm <= state_snapshot.threshold_top) {
+            gpio_set_level(GPIO_VALVE_CONTROL, 0);  // Close valve
+            set_valve_and_manual_state(false, false);
+            finalize_active_valve_session(esp_timer_get_time() / 1000);
+            filling = false;
+            manual_mode = false;
+            last_progress_time_ms = 0;
+            last_no_progress_log_ms = 0;
+            progress_reference_distance = 0;
+            progress_candidate_distance = 0;
+            progress_confirmation_count = 0;
+            ESP_LOGI(TAG, "🚰 Valve CLOSED - reached OBEN threshold, stopping fill");
+        }
+
         if (filling && !state_snapshot.valve_state) {
             finalize_active_valve_session(esp_timer_get_time() / 1000);
             filling = false;
@@ -3337,21 +3418,23 @@ static void valve_task(void *pvParameters)
                 progress_confirmation_count = 0;
             }
 
-            uint64_t elapsed_ms = now_ms - fill_start_time_ms;
-            if (elapsed_ms > state_snapshot.timeout_max) {
-                gpio_set_level(GPIO_VALVE_CONTROL, 0);  // Close valve
-                set_valve_and_manual_state(false, false);
-                finalize_active_valve_session(now_ms);
-                filling = false;
-                manual_mode = false;
-                last_progress_time_ms = 0;
-                last_no_progress_log_ms = 0;
-                progress_reference_distance = 0;
-                progress_candidate_distance = 0;
-                progress_confirmation_count = 0;
-                ESP_LOGW(TAG, "⚠️  TIMEOUT! Valve CLOSED - fill time exceeded %d ms", 
-                        state_snapshot.timeout_max);
-                // Note: Not calling emergency stop, just safety closure
+            if (!manual_mode) {
+                uint64_t elapsed_ms = now_ms - fill_start_time_ms;
+                if (elapsed_ms > state_snapshot.timeout_max) {
+                    gpio_set_level(GPIO_VALVE_CONTROL, 0);  // Close valve
+                    set_valve_and_manual_state(false, false);
+                    finalize_active_valve_session(now_ms);
+                    filling = false;
+                    manual_mode = false;
+                    last_progress_time_ms = 0;
+                    last_no_progress_log_ms = 0;
+                    progress_reference_distance = 0;
+                    progress_candidate_distance = 0;
+                    progress_confirmation_count = 0;
+                    ESP_LOGW(TAG, "⚠️  TIMEOUT! Valve CLOSED - fill time exceeded %d ms", 
+                            state_snapshot.timeout_max);
+                    // Note: Not calling emergency stop, just safety closure
+                }
             }
         }
         

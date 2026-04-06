@@ -16,6 +16,8 @@ Die vorherige Phase-3-Aufteilung auf mehrere Referenzdateien wurde archiviert un
 
 - VL53L0X-Abstandsmessung ueber I2C
 - Automatische Befuellung zwischen OBEN- und UNTEN-Schwelle
+- Beim Erreichen des OBEN-Wertes wird das Befuellen gestoppt; das System muss nicht exakt auf dem Wert halten
+- Der BEFUELLEN-Button kann nur gestartet werden, solange der aktuelle Messwert groesser als der OBEN-Schwellenwert ist
 - Manuelles Befuellen ueber Web-UI und API
 - Sicherheitsabschaltung ueber maximale Ventil-Offenzeit
 - Zusaetzlicher Fortschritts-Timeout fuer automatische Befuellung

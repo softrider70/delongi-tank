@@ -145,6 +145,8 @@ notes: |
   - Keep it simple: keine externe Frontend-Toolchain, mobile-first, eingebettete UI.
   - Sensor-Messwertlogik: je kleiner Abstand = Tank voller.
   - OBEN-Grenzwert: Tank VOLL (kleiner Abstand).
+  - Beim Erreichen des OBEN-Grenzwerts wird das Befuellen sofort gestoppt; es muss nicht exakt auf dem Wert gehalten werden.
+  - Der BEFUELLEN-Button startet nur, wenn der Messwert hoechstens oberhalb des OBEN-Grenzwerts liegt.
   - UNTEN-Grenzwert: Tank LEER (grosser Abstand).
   - Historische Phase-3-Dateien wurden in archive/phase3-reference verschoben.
   - OTA-Partitionierung ist auf `partitions_ota_custom.csv` umgestellt (groessere A/B-App-Slots).
