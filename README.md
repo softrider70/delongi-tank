@@ -23,6 +23,8 @@ Die vorherige Phase-3-Aufteilung auf mehrere Referenzdateien wurde archiviert un
 - Build-/App-Versionen werden automatisch via `tools/increment_build.py` aus `include/config.h` generiert.
 - `backup-before-upstream-merge` bleibt als Sicherungsbranch erhalten.
 
+> **Wichtig:** Bosch-Tank soll funktional eng an delonghi-tank angelehnt bleiben und möglichst dieselben Features erhalten. Dieser Hinweis ist bewusst als feste Projektrichtlinie formuliert.
+
 ## Implementierter Funktionsumfang
 
 ### Tank- und Ventillogik
@@ -234,17 +236,21 @@ idf.py -p <serial port to use> monitor
 - `tools/update_hardware_inventory.py`: Hardware-Inventarpflege fuer ESP32-Projekte
 - `PROJECT.md`: kompakte Projektspezifikation auf Basis des aktuellen Stands
 
+## GPIO Pin Mapping
+
+- `GPIO_LED_STATUS = 2` — Onboard-Status-LED
+- `GPIO_I2C_SDA = 21` — ToF-Sensor SDA
+- `GPIO_I2C_SCL = 22` — ToF-Sensor SCL
+- `GPIO_VALVE_CONTROL = 32` — Ventil-MOSFET-Ansteuerung
+- `GPIO_TOUCH_KEY = 27` — Touch-Key (T7) fuer manuelles Befuellen
+
 ## Hinweise
 
 - `sdkconfig` enthaelt die aktuell genutzte lokale Build-Konfiguration und kann sich stark aendern.
 - Historische Phase-3-Referenzen liegen absichtlich im Archiv, damit die aktive Implementierung klar erkennbar bleibt.
 - Der Diagnose-Reiter in der UI zeigt Sensor- und CPU-Livewerte.
 - Gruene Reset-Taste unterstuetzt: kurzer Druck (Warnung reset), 3s halten (Zaehler reset), Doppeltipp (Sensor-Reinit).
-- GPIO pin assignments
-- UART baudrates
-- WiFi/BLE settings
-- Display configurations
-- Sensor parameters
+- Der STOPP-Button schliesst das Ventil sofort und verhindert ein direktes Autowiedereroeffnen, bis manuell erneut Befuellen gestartet wird.
 
 ### Board Selection
 

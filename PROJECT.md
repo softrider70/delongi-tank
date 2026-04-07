@@ -8,6 +8,8 @@ description: |
   WiFi-Webserver-UI, NVS-basierter Konfigurationsspeicherung und integrierter Notaus-Logik.
   Die aktive Implementierung liegt in components/main/main.c.
 
+  Hinweis: Bosch-Tank soll funktional eng an delonghi-tank angelehnt bleiben und möglichst dieselben Features erhalten.
+
 target_board: esp32  # ESP32-DEVKITC-V4 (38-pin)
 target_version: ESP-IDF 6.0.0
 
@@ -47,6 +49,7 @@ hardware:
     i2c_sda: 21              # VL6150X/VL6180X-compatible ToF sensor
     i2c_scl: 22              # VL6150X/VL6180X-compatible ToF sensor
     valve_control: 32        # externer Transistor zur Ventilsteuerung (nur Bosch)
+    touch_key: 27            # Touch-Key T7 fuer manuelles Befuellen
     status_led: 2            # Onboard LED
   
   external_peripherals:
@@ -93,11 +96,11 @@ chat_requirements:
 
 recent_changes:
   - date: 2026-04-06
-    summary: Branch renamed to main and Bosch project synced with upstream delonghi updates
+    summary: Branch renamed to main and Bosch project synced with upstream updates
     details: |
       - `master` was renamed to `main` and now tracks `origin/main`.
       - Remote `origin/master` was deleted.
-      - Upstream commits from `softrider70/delonghi-tank` were merged, including manual-fill stop behavior at OBEN.
+      - Upstream commits from `upstream/main` were merged, including manual-fill stop behavior at OBEN.
       - OTA diagnostics were added to the Diagnostics UI.
       - Bosch-specific naming and project settings were preserved.
 

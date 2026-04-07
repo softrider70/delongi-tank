@@ -85,6 +85,7 @@ typedef struct {
     uint16_t sensor_distance_cm;
     bool valve_state;  // true = open, false = closed
     bool manual_fill_active;
+    bool user_fill_halt;  // Pause auto-fill after explicit STOP
     bool emergency_stop_active;
     char emergency_stop_reason[128];  // Grund für Notstopp
     uint32_t valve_open_count;  // Anzahl Ventilöffnungen
@@ -110,6 +111,7 @@ static system_state_t sys_state = {
     .sensor_distance_cm = 0,
     .valve_state = false,
     .manual_fill_active = false,
+    .user_fill_halt = false,
     .emergency_stop_active = false,
     .emergency_stop_reason = "",
     .valve_open_count = 0,
@@ -863,6 +865,11 @@ static esp_err_t request_manual_fill(bool enable, const char *source, bool *manu
         return ESP_OK;
     }
 
+    if (enable) {
+        xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
+        sys_state.user_fill_halt = false;
+        xSemaphoreGive(sys_state_mutex);
+    }
     set_manual_fill_active(enable);
     if (manual_fill_active_out != NULL) {
         *manual_fill_active_out = enable;
@@ -1524,6 +1531,9 @@ static esp_err_t emergency_stop_handler(httpd_req_t *req)
  */
 static esp_err_t valve_stop_handler(httpd_req_t *req)
 {
+    xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
+    sys_state.user_fill_halt = true;
+    xSemaphoreGive(sys_state_mutex);
     gpio_set_level(GPIO_VALVE_CONTROL, 0);
     set_valve_and_manual_state(false, false);
     finalize_active_valve_session(esp_timer_get_time() / 1000);
@@ -3248,7 +3258,7 @@ static void valve_task(void *pvParameters)
             last_tank_state = current_tank_state;
         }
 
-        if (current_tank_state == 3 && !filling && !state_snapshot.emergency_stop_active && !state_snapshot.manual_fill_active) {
+        if (current_tank_state == 3 && !filling && !state_snapshot.emergency_stop_active && !state_snapshot.manual_fill_active && !state_snapshot.user_fill_halt) {
             gpio_set_level(GPIO_VALVE_CONTROL, 1);  // Open valve
             filling = true;
             manual_mode = false;

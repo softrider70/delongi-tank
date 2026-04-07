@@ -19,7 +19,7 @@
 #define GPIO_I2C_SDA        21      // ToF-Sensor SDA (Data)
 #define GPIO_I2C_SCL        22      // ToF-Sensor SCL (Clock)
 #define GPIO_VALVE_CONTROL  32      // GPIO für externen Transistor zur Ventilsteuerung
-#define GPIO_TOUCH_KEY      33      // Touch-Key T8 fuer manuelles Befuellen (nur ESP32 classic)
+#define GPIO_TOUCH_KEY      27      // Touch-Key T7 fuer manuelles Befuellen (nur ESP32 classic)
 
 // ============================================================================
 // I2C Configuration (TOF Sensor)
