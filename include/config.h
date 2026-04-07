@@ -18,7 +18,7 @@
 #define GPIO_LED_STATUS     2       // Onboard LED (Status-Anzeige)
 #define GPIO_I2C_SDA        21      // VL53L0X Sensor (Data)
 #define GPIO_I2C_SCL        22      // VL53L0X Sensor (Clock)
-#define GPIO_VALVE_CONTROL  16      // MOSFET-Modul für 12V Magnetventil
+#define GPIO_VALVE_CONTROL  32      // GPIO für externen Transistor zur Ventilsteuerung
 #define GPIO_TOUCH_KEY      33      // Touch-Key T8 fuer manuelles Befuellen (nur ESP32 classic)
 
 // ============================================================================

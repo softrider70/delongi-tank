@@ -315,7 +315,9 @@ static esp_err_t init_i2c(void)
         .glitch_ignore_cnt = 7,
         .intr_priority = 0,
         .trans_queue_depth = 0,
-        .flags.enable_internal_pullup = true,
+        // External 4.7k pull-ups are present on the VL53L0X board,
+        // so disable the ESP32 internal I2C pull-ups to avoid conflicts.
+        .flags.enable_internal_pullup = false,
         .flags.allow_pd = false,
     };
 
@@ -356,7 +358,7 @@ static esp_err_t init_gpio(void)
 {
     ESP_LOGI(TAG, "Initializing GPIO...");
     
-    // Configure Valve control pin (GPIO 16) - OUTPUT
+    // Configure Valve control pin (GPIO 32 on Bosch hardware) - OUTPUT
     gpio_config_t valve_cfg = {
         .pin_bit_mask = (1ULL << GPIO_VALVE_CONTROL),
         .mode = GPIO_MODE_OUTPUT,
@@ -2695,7 +2697,9 @@ static esp_err_t vl53l0x_write_multi(uint8_t reg, const uint8_t *src, uint8_t co
 static uint8_t vl53l0x_read_reg(uint8_t reg)
 {
     uint8_t value = 0;
-    if (vl53l0x_i2c_write_read(&reg, 1, &value, 1) != ESP_OK) {
+    esp_err_t ret = vl53l0x_i2c_write_read(&reg, 1, &value, 1);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "VL53L0X read reg 0x%02X failed: %s", reg, esp_err_to_name(ret));
         return 0;
     }
     return value;
@@ -2704,10 +2708,25 @@ static uint8_t vl53l0x_read_reg(uint8_t reg)
 static uint16_t vl53l0x_read_reg16(uint8_t reg)
 {
     uint8_t data[2] = {0};
-    if (vl53l0x_i2c_write_read(&reg, 1, data, 2) != ESP_OK) {
+    esp_err_t ret = vl53l0x_i2c_write_read(&reg, 1, data, 2);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "VL53L0X read reg16 0x%02X failed: %s", reg, esp_err_to_name(ret));
         return 0;
     }
     return ((uint16_t)data[0] << 8) | data[1];
+}
+
+static bool vl53l0x_read_reg_retry(uint8_t reg, uint8_t *value, int attempts)
+{
+    for (int i = 0; i < attempts; i++) {
+        esp_err_t ret = vl53l0x_i2c_write_read(&reg, 1, value, 1);
+        if (ret == ESP_OK) {
+            return true;
+        }
+        ESP_LOGW(TAG, "VL53L0X read reg 0x%02X attempt %d failed: %s", reg, i + 1, esp_err_to_name(ret));
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    return false;
 }
 
 static esp_err_t vl53l0x_read_multi(uint8_t reg, uint8_t *dst, uint8_t count)
@@ -2722,6 +2741,7 @@ static void i2c_scan_bus(void)
     ESP_LOGI(TAG, "🔍 I2C bus scan (0x03-0x77)...");
     int found = 0;
     for (uint8_t addr = 0x03; addr < 0x78; addr++) {
+        esp_task_wdt_reset();
         esp_err_t ret = i2c_master_probe(i2c_bus_handle, addr, I2C_SCAN_TIMEOUT_MS);
         if (ret == ESP_OK) {
             const char *name = (addr == 0x29) ? " (VL53L0X)" :
@@ -2793,13 +2813,35 @@ static bool vl53l0x_perform_single_ref_calibration(uint8_t vhv_init_byte)
 
 static bool vl53l0x_sensor_ready(void)
 {
-    uint8_t id = vl53l0x_read_reg(IDENTIFICATION_MODEL_ID);
+    esp_err_t probe = i2c_master_probe(i2c_bus_handle, VL53L0X_ADDR, I2C_SCAN_TIMEOUT_MS);
+    if (probe != ESP_OK) {
+        ESP_LOGE(TAG, "❌ VL53L0X I2C probe failed at 0x29: %s", esp_err_to_name(probe));
+        ESP_LOGE(TAG, "   Verify wiring, power, pull-ups, and that the sensor is not held in reset.");
+        return false;
+    }
+
+    uint8_t id = 0;
+    if (!vl53l0x_read_reg_retry(IDENTIFICATION_MODEL_ID, &id, 3)) {
+        ESP_LOGE(TAG, "❌ VL53L0X model register read failed after retries.");
+        ESP_LOGE(TAG, "   Device acked at 0x29 but did not return a valid model ID.");
+        return false;
+    }
+
     if (id == 0xEE) {
-        ESP_LOGI(TAG, "✅ VL53L0X FOUND (Model 0x%02X, Rev 0x%02X)",
-                 id, vl53l0x_read_reg(IDENTIFICATION_REVISION_ID));
+        uint8_t rev = 0;
+        if (!vl53l0x_read_reg_retry(IDENTIFICATION_REVISION_ID, &rev, 3)) {
+            ESP_LOGW(TAG, "⚠️  VL53L0X revision read failed, continuing with model OK");
+        }
+        ESP_LOGI(TAG, "✅ VL53L0X FOUND (Model 0x%02X, Rev 0x%02X)", id, rev);
         return true;
     }
+
     ESP_LOGE(TAG, "❌ VL53L0X not found (got 0x%02X)", id);
+    ESP_LOGE(TAG, "   I2C device responded at 0x29, but the model register is invalid.");
+    ESP_LOGE(TAG, "   Possible causes: wrong sensor wiring/orientation, bad ground reference, or I2C bus noise.");
+    if (id == 0x00 || id == 0x10 || id == 0xBD) {
+        ESP_LOGE(TAG, "   Note: 0x%02X is not a valid VL53L0X ID.", id);
+    }
     return false;
 }
 
@@ -3066,6 +3108,7 @@ static void sensor_task(void *pvParameters)
         }
     } else {
         ESP_LOGE(TAG, "⚠️  VL53L0X sensor NOT DETECTED - EMERGENCY STOP");
+        ESP_LOGE(TAG, "   If the I2C scan did not show 0x29, verify wiring, pull-ups and sensor power.");
         xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
         trigger_emergency_stop("VL53L0X sensor not detected");
         xSemaphoreGive(sys_state_mutex);

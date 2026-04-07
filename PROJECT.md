@@ -46,7 +46,7 @@ hardware:
   pin_mapping:
     i2c_sda: 21              # VL53L0X Sensor
     i2c_scl: 22              # VL53L0X Sensor
-    valve_control: 16        # MOSFET-Modul (12V Magnetventil)
+    valve_control: 32        # externer Transistor zur Ventilsteuerung (nur Bosch)
     status_led: 2            # Onboard LED
   
   external_peripherals:
