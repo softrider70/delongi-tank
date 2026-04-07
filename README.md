@@ -18,6 +18,9 @@ Die vorherige Phase-3-Aufteilung auf mehrere Referenzdateien wurde archiviert un
 - Funktionale Ergänzung: Befüllen stoppt beim Erreichen des OBEN-Grenzwerts.
 - Der `BEFUELLEN`-Button ist deaktiviert, wenn der Tank bereits voll ist.
 - OTA-Diagnosewerte wurden in den Diagnostics-Tab aufgenommen.
+- Lokale OTA-Quellen über HTTP/HTTPS (`http://<host-ip>/bosch-tank.bin`) werden jetzt unterstützt.
+- Laufzeitdaten wie Gesamt-Oeffnungszeit, Gesamt-Liter und OTA-Status werden persistent in NVS gespeichert.
+- Build-/App-Versionen werden automatisch via `tools/increment_build.py` aus `include/config.h` generiert.
 - `backup-before-upstream-merge` bleibt als Sicherungsbranch erhalten.
 
 ## Implementierter Funktionsumfang
@@ -103,6 +106,7 @@ Der aktuelle Firmwarepfad registriert folgende Endpunkte:
 - `GET /api/ota/status`
 - `POST /api/system/reset`
 
+
 ## Statusmodell
 
 `GET /api/status` liefert unter anderem:
@@ -141,6 +145,7 @@ Die aktuelle Firmware validiert Konfiguration wie folgt:
 - Partitionierung ist OTA-optimiert ueber `partitions_ota_custom.csv`
 - `POST /api/ota/start` erwartet `{ "url": "http://.../bosch-tank.bin" }` oder `https://...`
 - `GET /api/ota/status` liefert den Laufstatus und Fehlerdetails
+- Diagnose-Tab beinhaltet jetzt ein OTA-Update-Feld mit lokalem Binärpfad-Vorschlag
 - Erfolgreiches OTA fuehrt automatisch einen Neustart aus
 - Fuer lokalen VS-Code-Workflow ist HTTP explizit erlaubt (LAN)
 
@@ -193,6 +198,19 @@ Was der OTA-Modus automatisch macht:
 - OTA per API triggern
 - OTA-Status bis Erfolg/Fehler pollen
 
+## Entwickler-Tools & Wartung
+
+- `tools/flash-mode.ps1`: Vereinheitlichter USB/OTA Flash-Workflow aus dem VS Code Terminal.
+- `tools/increment_build.py`: Generiert `include/version.h` und inkrementiert die Buildnummer automatisch.
+- `tools/update_hardware_inventory.py`: Ordnet ein ESP32-Gerät im Inventar einem Projekt zu, identifiziert über MAC, Port, Chip und Revision.
+- Inventardatei: `c:\Users\win4g\Desktop\esp32-hardware-overview.md`
+
+Beispiel:
+
+```powershell
+python tools/update_hardware_inventory.py --mac c8:2e:18:f0:36:50 --project CYD --port COM11 --chip ESP32-D0WD-V3 --revision v3.1
+```
+
 ### Monitor
 
 ```powershell
@@ -206,7 +224,8 @@ idf.py -p COM3 monitor
 - `include/version.h`: generierte Versionsinformation
 - `partitions_ota_custom.csv`: OTA-optimierte 4MB-Partitionierung (A/B-Slots)
 - `tools/flash-mode.ps1`: USB/OTA Flash-Umschalter fuer VS Code Terminal
-- `tools/increment_build.py`: Buildnummer-Generierung
+- `tools/increment_build.py`: Buildnummer-Generierung und `version.h`-Erzeugung
+- `tools/update_hardware_inventory.py`: Hardware-Inventarpflege fuer ESP32-Projekte
 - `PROJECT.md`: kompakte Projektspezifikation auf Basis des aktuellen Stands
 
 ## Hinweise

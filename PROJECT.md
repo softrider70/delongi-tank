@@ -66,6 +66,7 @@ features:
   - Fill-Progress-Timeout fuer automatische Befuellung
   - Persistente Notaus-Logik mit Fehlergrund
   - Build-/App-Version in Status und UI
+  - Persistente Laufzeit- und OTA-Zustandsdaten in NVS
   - Gesamt-Literzaehler aus Ventil-Offenzeit und Durchflusswert
   - Brownout-Schutz (sofort Ventil deaktivieren)
   - Stack-Monitoring mit persistenter Warnmeldung
@@ -73,6 +74,14 @@ features:
   - Diagnosetab mit Sensor- und CPU-Livewerten
   - OTA-Update per REST-Endpoint mit Statusabfrage
   - Umschaltbarer USB/OTA-Flash-Workflow via `tools/flash-mode.ps1`
+
+developer_tools:
+  - tool: tools/flash-mode.ps1
+    purpose: USB/OTA flash workflow via VS Code terminal
+  - tool: tools/increment_build.py
+    purpose: automatic build number and version header generation
+  - tool: tools/update_hardware_inventory.py
+    purpose: assign an ESP32 device in the inventory to one or more projects by MAC, port, chip, and revision
 
 chat_requirements:
   - App-/Build-Version muss sichtbar und nachvollziehbar sein
@@ -162,4 +171,5 @@ notes: |
   - OTA-Partitionierung ist auf `partitions_ota_custom.csv` umgestellt (groessere A/B-App-Slots).
   - OTA kann fuer lokalen VS-Code-Workflow via HTTP oder HTTPS gestartet werden.
   - Flash-Modus ist zur Laufzeit per Script schaltbar: `tools/flash-mode.ps1 -Mode usb|ota`.
+  - Entwickler-Tools verfuegbar: `tools/flash-mode.ps1`, `tools/increment_build.py`, `tools/update_hardware_inventory.py`.
 
