@@ -44,3 +44,7 @@ wifi_client_monitor.txt
 wifi_fixed_final.txt
 wifi_optimized_serial.txt
 wifi_test_monitor.txt
+
+# Local build/flash state
+.last_built_commit
+.last_flash_mode.json

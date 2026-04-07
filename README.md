@@ -1,6 +1,6 @@
 # bosch-tank
 
-ESP32-Firmware fuer die Ueberwachung und Steuerung eines Kaffeemaschinen-Wassertanks mit VL53L0X, Ventilsteuerung, WiFi-Weboberflaeche und persistenter Konfiguration.
+ESP32-Firmware fuer die Ueberwachung und Steuerung eines Kaffeemaschinen-Wassertanks mit VL6150X/VL6180X-kompatiblem ToF-Sensor, Ventilsteuerung, WiFi-Weboberflaeche und persistenter Konfiguration.
 
 ## Aktueller Stand
 
@@ -27,7 +27,7 @@ Die vorherige Phase-3-Aufteilung auf mehrere Referenzdateien wurde archiviert un
 
 ### Tank- und Ventillogik
 
-- VL53L0X-Abstandsmessung ueber I2C
+- VL6150X/VL6180X-kompatible ToF-Abstandsmessung ueber I2C
 - Automatische Befuellung zwischen OBEN- und UNTEN-Schwelle
 - Beim Erreichen des OBEN-Wertes wird das Befuellen gestoppt; das System muss nicht exakt auf dem Wert halten
 - Der BEFUELLEN-Button kann nur gestartet werden, solange der aktuelle Messwert groesser als der OBEN-Schwellenwert ist
@@ -166,8 +166,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build-and-commit.ps1
 ### Flash
 
 ```powershell
-idf.py -p <serial port to use> flash
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\flash-mode.ps1 -Mode last
 ```
+
+Wenn kein letzter Flash-Modus bekannt ist, wird standardmäßig USB verwendet.
+
+Der Flash-Modus prüft vor dem Flashen, ob der aktuelle Git-Commit vom zuletzt gebauten Commit abweicht oder ob unveröffentlichte Änderungen vorliegen. In solchen Fällen wird vor dem Flashen automatisch neu gebaut.
 
 ### USB/OTA Flash-Umschaltung (empfohlen)
 
