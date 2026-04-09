@@ -21,6 +21,7 @@ Die vorherige Phase-3-Aufteilung auf mehrere Referenzdateien wurde archiviert un
 - Lokale OTA-Quellen über HTTP/HTTPS (`http://<host-ip>/bosch-tank.bin`) werden jetzt unterstützt.
 - Laufzeitdaten wie Gesamt-Oeffnungszeit, Gesamt-Liter und OTA-Status werden persistent in NVS gespeichert.
 - Build-/App-Versionen werden automatisch via `tools/increment_build.py` aus `include/config.h` generiert.
+- Touch-Key auf GPIO 27 (T7) wurde erfolgreich getestet: Einmal berühren startet das Befüllen, ein zweites Mal stoppt es.
 - `backup-before-upstream-merge` bleibt als Sicherungsbranch erhalten.
 
 > **Wichtig:** Bosch-Tank soll funktional eng an delonghi-tank angelehnt bleiben und möglichst dieselben Features erhalten. Dieser Hinweis ist bewusst als feste Projektrichtlinie formuliert.

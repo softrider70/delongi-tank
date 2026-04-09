@@ -16,12 +16,17 @@ idf_component_register(
     WHOLE_ARCHIVE
 )
 
-add_custom_target(generate_version_header ALL
+set(VERSION_HEADER ${CMAKE_SOURCE_DIR}/include/version.h)
+set(VERSION_TEMPLATE ${CMAKE_SOURCE_DIR}/include/version.h.in)
+
+add_custom_command(
+    OUTPUT ${VERSION_HEADER}
     COMMAND python ${CMAKE_SOURCE_DIR}/tools/increment_build.py
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    BYPRODUCTS ${CMAKE_SOURCE_DIR}/include/version.h
+    DEPENDS ${VERSION_TEMPLATE} ${CMAKE_SOURCE_DIR}/include/config.h ${CMAKE_SOURCE_DIR}/tools/increment_build.py
     COMMENT "Generating version.h and incrementing build number"
     VERBATIM
 )
 
+add_custom_target(generate_version_header DEPENDS ${VERSION_HEADER})
 add_dependencies(${COMPONENT_LIB} generate_version_header)

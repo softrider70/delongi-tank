@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-04-09
+
+- Touch-Key auf GPIO 27 (T7) wurde erfolgreich getestet: einmal berühren startet die manuelle Befüllung, ein zweites Mal stoppt sie.
+
 ## 2026-04-06
 
 - Branch `master` wurde in `main` umbenannt.

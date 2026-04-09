@@ -148,7 +148,7 @@ static i2c_master_bus_handle_t i2c_bus_handle = NULL;
 static i2c_master_dev_handle_t vl53l0x_dev_handle = NULL;
 
 #if CONFIG_IDF_TARGET_ESP32
-#define TOUCH_KEY_PAD TOUCH_PAD_NUM8
+#define TOUCH_KEY_PAD TOUCH_PAD_NUM7
 static bool touch_key_enabled = false;
 static uint16_t touch_key_baseline = 0;
 #endif
@@ -402,7 +402,7 @@ static esp_err_t init_gpio(void)
 #if CONFIG_IDF_TARGET_ESP32
 static esp_err_t init_touch_key(void)
 {
-    ESP_LOGI(TAG, "Initializing touch key on GPIO %d (T8)", GPIO_TOUCH_KEY);
+    ESP_LOGI(TAG, "Initializing touch key on GPIO %d (T7)", GPIO_TOUCH_KEY);
 
     esp_err_t ret = touch_pad_init();
     if (ret != ESP_OK) {
