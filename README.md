@@ -2,6 +2,8 @@
 
 ESP32-Firmware fuer die Ueberwachung und Steuerung eines Kaffeemaschinen-Wassertanks mit VL6150X/VL6180X-kompatiblem ToF-Sensor, Ventilsteuerung, WiFi-Weboberflaeche und persistenter Konfiguration.
 
+Das Ventil wird jetzt ueber ein ILN44Z-Relaismodul angesteuert. Die Schaltung schaltet gegen Masse, der Relaiskreis arbeitet mit 12V und einem 1Ω-Widerstand zur Strombegrenzung, waehrend die Transformatorspannung beim Schalten konstant bleibt.
+
 ## Aktueller Stand
 
 Der aktive Lauf- und Buildpfad liegt in `components/main/main.c`.
@@ -242,7 +244,7 @@ idf.py -p <serial port to use> monitor
 - `GPIO_LED_STATUS = 2` — Onboard-Status-LED
 - `GPIO_I2C_SDA = 21` — ToF-Sensor SDA
 - `GPIO_I2C_SCL = 22` — ToF-Sensor SCL
-- `GPIO_VALVE_CONTROL = 32` — Ventil-MOSFET-Ansteuerung
+- `GPIO_VALVE_CONTROL = 32` — Ventil-Relaisansteuerung (ILN44Z), schaltet 12V gegen Masse
 - `GPIO_TOUCH_KEY = 27` — Touch-Key (T7) fuer manuelles Befuellen
 
 ## Hinweise
