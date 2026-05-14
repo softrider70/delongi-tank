@@ -183,6 +183,8 @@ typedef struct {
     char url[192];
     uint64_t last_start_ms;
     uint64_t last_end_ms;
+    uint64_t boot_time_ms;  // Boot-Zeit für Health-Check
+    bool health_check_passed;  // Health-Check nach OTA
 } ota_state_t;
 
 static ota_state_t ota_state = {
@@ -196,12 +198,15 @@ static ota_state_t ota_state = {
     .url = "",
     .last_start_ms = 0,
     .last_end_ms = 0,
+    .boot_time_ms = 0,
+    .health_check_passed = false,
 };
 
 static void get_system_state_snapshot(system_state_t *snapshot);
 static void set_manual_fill_active(bool active);
 static esp_err_t request_manual_fill(bool enable, const char *source, bool *manual_fill_active_out, const char **message_out);
 static void ota_update_task(void *pvParameters);
+static void ota_health_check_task(void *pvParameters);
 
 // ============================================================================
 // Phase 1: NVS (Non-Volatile Storage) Initialization
@@ -1659,6 +1664,28 @@ static esp_err_t ota_status_handler(httpd_req_t *req)
 }
 
 /**
+ * @brief Handler: POST /api/ota/rollback - Rollback to previous firmware
+ */
+static esp_err_t ota_rollback_handler(httpd_req_t *req)
+{
+    esp_err_t err = esp_ota_mark_app_invalid_rollback_and_reboot();
+    
+    if (err == ESP_OK) {
+        send_json_response(req,
+            "{\"status\":\"OK\",\"message\":\"Rollback initiated, rebooting...\"}");
+        ESP_LOGI(TAG, "OTA Rollback initiated, rebooting...");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        esp_restart();
+    } else {
+        ESP_LOGE(TAG, "OTA Rollback failed: %s", esp_err_to_name(err));
+        send_json_response(req,
+            "{\"status\":\"ERROR\",\"message\":\"Rollback failed\"}");
+    }
+    
+    return ESP_OK;
+}
+
+/**
  * @brief Handler: POST /api/ota/start - Start OTA from HTTP(S) URL
  */
 static esp_err_t ota_start_handler(httpd_req_t *req)
@@ -1786,6 +1813,28 @@ static void ota_update_task(void *pvParameters)
     bool ota_aborted = false;
 
     xSemaphoreTake(ota_state_mutex, portMAX_DELAY);
+    strncpy(ota_state.phase, "VALIDATING", sizeof(ota_state.phase) - 1);
+    strncpy(ota_state.message, "Partition wird geprueft", sizeof(ota_state.message) - 1);
+    xSemaphoreGive(ota_state_mutex);
+
+    // Firmware-Größen-Prüfung vor OTA
+    const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+    if (update_partition == NULL) {
+        ESP_LOGE(TAG, "OTA: Keine Update-Partition gefunden");
+        xSemaphoreTake(ota_state_mutex, portMAX_DELAY);
+        ota_state.in_progress = false;
+        ota_state.last_result_ok = false;
+        strncpy(ota_state.phase, "FAILED", sizeof(ota_state.phase) - 1);
+        strncpy(ota_state.message, "Keine Update-Partition gefunden", sizeof(ota_state.message) - 1);
+        strncpy(ota_state.last_error, "no partition", sizeof(ota_state.last_error) - 1);
+        ota_state.last_end_ms = (uint64_t)(esp_timer_get_time() / 1000);
+        xSemaphoreGive(ota_state_mutex);
+        ota_task_handle = NULL;
+        free(url);
+        return;
+    }
+
+    xSemaphoreTake(ota_state_mutex, portMAX_DELAY);
     strncpy(ota_state.phase, "DOWNLOADING", sizeof(ota_state.phase) - 1);
     strncpy(ota_state.message, "Firmware wird geladen", sizeof(ota_state.message) - 1);
     xSemaphoreGive(ota_state_mutex);
@@ -1858,7 +1907,79 @@ static void ota_update_task(void *pvParameters)
 
     ota_task_handle = NULL;
     free(url);
-    vTaskDelete(NULL);
+}
+
+/**
+ * @brief OTA Health-Check Task - Prueft System nach OTA
+ */
+static void ota_health_check_task(void *pvParameters)
+{
+    ESP_LOGI(TAG, "OTA Health-Check task started");
+    
+    const uint32_t HEALTH_CHECK_DELAY_MS = 60000;  // 60 Sekunden nach Boot
+    const uint32_t CHECK_INTERVAL_MS = 5000;       // Alle 5 Sekunden pruefen
+    
+    vTaskDelay(pdMS_TO_TICKS(HEALTH_CHECK_DELAY_MS));
+    
+    while (1) {
+        xSemaphoreTake(ota_state_mutex, portMAX_DELAY);
+        
+        uint64_t boot_time = ota_state.boot_time_ms;
+        uint64_t current_time = (uint64_t)(esp_timer_get_time() / 1000);
+        bool last_ota_ok = ota_state.last_result_ok;
+        bool health_passed = ota_state.health_check_passed;
+        
+        xSemaphoreGive(ota_state_mutex);
+        
+        uint64_t time_since_boot = current_time - boot_time;
+        
+        // Health-Check nur wenn:
+        // - Zeit seit Boot < 120 Sekunden
+        // - Letztes OTA war erfolgreich
+        // - Health-Check noch nicht bestanden
+        if (time_since_boot < 120000 && last_ota_ok && !health_passed) {
+            // Pruefe ob System gesund ist
+            bool system_healthy = true;
+            
+            // Pruefe ob kritische Tasks laufen
+            if (sensor_task_handle == NULL || eTaskGetState(sensor_task_handle) == eDeleted) {
+                ESP_LOGW(TAG, "Health-Check: Sensor task nicht aktiv");
+                system_healthy = false;
+            }
+            
+            if (valve_task_handle == NULL || eTaskGetState(valve_task_handle) == eDeleted) {
+                ESP_LOGW(TAG, "Health-Check: Valve task nicht aktiv");
+                system_healthy = false;
+            }
+            
+            // Pruefe ob Sensor Daten kommen
+            xSemaphoreTake(sys_state_mutex, portMAX_DELAY);
+            uint16_t sensor_dist = sys_state.sensor_distance_cm;
+            bool sensor_stale = sys_state.sensor_data_stale;
+            xSemaphoreGive(sys_state_mutex);
+            
+            if (sensor_dist == 0 || sensor_stale) {
+                ESP_LOGW(TAG, "Health-Check: Sensor Daten ungueltig oder stale");
+                system_healthy = false;
+            }
+            
+            if (system_healthy) {
+                // System ist gesund - Health-Check bestanden
+                xSemaphoreTake(ota_state_mutex, portMAX_DELAY);
+                ota_state.health_check_passed = true;
+                xSemaphoreGive(ota_state_mutex);
+                ESP_LOGI(TAG, "✅ OTA Health-Check bestanden");
+            } else {
+                // System nicht gesund - Rollback ausloesen
+                ESP_LOGE(TAG, "❌ OTA Health-Check fehlgeschlagen - Rollback wird ausgeloest");
+                esp_ota_mark_app_invalid_rollback_and_reboot();
+                vTaskDelay(pdMS_TO_TICKS(2000));  // Zeit fuer Rollback
+                esp_restart();
+            }
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(CHECK_INTERVAL_MS));
+    }
 }
 
 /**
@@ -3637,6 +3758,14 @@ static httpd_handle_t start_webserver(void)
             .user_ctx = NULL
         };
         httpd_register_uri_handler(server, &ota_status_uri);
+
+        httpd_uri_t ota_rollback_uri = {
+            .uri = "/api/ota/rollback",
+            .method = HTTP_POST,
+            .handler = ota_rollback_handler,
+            .user_ctx = NULL
+        };
+        httpd_register_uri_handler(server, &ota_rollback_uri);
         
         // Register POST /api/system/reset
         httpd_uri_t reset_uri = {
@@ -3696,6 +3825,12 @@ void app_main(void)
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
     ESP_LOGI(TAG, "   Hardware: ESP32 (rev %d)", chip_info.revision);
+    
+    // Speichere Boot-Zeit fuer Health-Check nach OTA
+    xSemaphoreTake(ota_state_mutex, portMAX_DELAY);
+    ota_state.boot_time_ms = (uint64_t)(esp_timer_get_time() / 1000);
+    ota_state.health_check_passed = false;
+    xSemaphoreGive(ota_state_mutex);
     
     ESP_LOGI(TAG, "===========================================");
     
@@ -3953,6 +4088,22 @@ void app_main(void)
         return;
     }
     ESP_LOGI(TAG, "   ✓ stack_monitor_task (priority %d, stack %d bytes, core %d)", TASK_PRIO_MAIN, TASK_STACK_STACK_MONITOR, TASK_CORE_NETWORK);
+    
+    // Start OTA Health-Check Task
+    task_result = xTaskCreatePinnedToCore(
+        ota_health_check_task,
+        "ota_health_check_task",
+        3072,
+        NULL,
+        TASK_PRIO_MAIN,
+        NULL,
+        TASK_CORE_NETWORK
+    );
+    if (task_result != pdPASS) {
+        ESP_LOGW(TAG, "⚠️ Failed to create ota_health_check_task - OTA recovery disabled");
+    } else {
+        ESP_LOGI(TAG, "   ✓ ota_health_check_task (priority %d, stack %d bytes, core %d)", TASK_PRIO_MAIN, 3072, TASK_CORE_NETWORK);
+    }
     
     ESP_LOGI(TAG, "✅ All tasks created and running");
     ESP_LOGI(TAG, "📡 Configured thresholds:");

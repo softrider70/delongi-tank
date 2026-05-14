@@ -109,6 +109,7 @@ Der aktuelle Firmwarepfad registriert folgende Endpunkte:
 - `POST /api/sensor/reset`
 - `POST /api/ota/start`
 - `GET /api/ota/status`
+- `POST /api/ota/rollback`
 - `POST /api/system/reset`
 
 
