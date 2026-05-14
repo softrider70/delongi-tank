@@ -8,6 +8,7 @@ param(
 
 $idfCandidates = @(
     $IdfPath,
+    "C:\Users\win4g\Downloads\GitHub\VS-Projekte\CascadeProjects\esp-idf",
     "C:\esp\v6.0\esp-idf",
     "C:\esp\esp-idf"
 ) | Where-Object { $_ -and (Test-Path $_) }

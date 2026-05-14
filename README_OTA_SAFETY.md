@@ -9,7 +9,7 @@ Bei Fehlern während OTA-Updates kann der ESP32 in einem Boot-Loop feststecken o
 ### 1. **A/B-Partitionierung (bereits implementiert)**
 - ESP32 hat 2 OTA-Partitionen (ota_0, ota_1)
 - Bei Fehler bootet von letzter funktionierender Partition
-- **Status**: Aktiv durch `partitions_ota_custom.csv`
+- **Status**: Aktiv durch `partitions.csv`
 
 ### 2. **Pre-OTA-Validierung (neu implementiert)**
 ```c

@@ -171,7 +171,7 @@ notes: |
   - Der BEFUELLEN-Button kann nur gestartet werden, solange der aktuelle Messwert groesser als der OBEN-Schwellenwert ist.
   - UNTEN-Grenzwert: Tank LEER (grosser Abstand).
   - Historische Phase-3-Dateien wurden in archive/phase3-reference verschoben.
-  - OTA-Partitionierung ist auf `partitions_ota_custom.csv` umgestellt (groessere A/B-App-Slots).
+  - OTA-Partitionierung ist auf `partitions.csv` umgestellt (groessere A/B-App-Slots).
   - OTA kann fuer lokalen VS-Code-Workflow via HTTP oder HTTPS gestartet werden.
   - Flash-Modus ist zur Laufzeit per Script schaltbar: `tools/flash-mode.ps1 -Mode usb|ota`.
   - Entwickler-Tools verfuegbar: `tools/flash-mode.ps1`, `tools/increment_build.py`, `tools/update_hardware_inventory.py`.
