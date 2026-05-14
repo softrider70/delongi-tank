@@ -407,44 +407,75 @@ static esp_err_t init_touch_key(void)
     esp_err_t ret = touch_pad_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "touch_pad_init failed: %s", esp_err_to_name(ret));
-        return ret;
+        touch_key_enabled = false;
+        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
     }
 
     ret = touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "touch_pad_set_fsm_mode failed: %s", esp_err_to_name(ret));
         touch_pad_deinit();
-        return ret;
+        touch_key_enabled = false;
+        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
     }
 
     ret = touch_pad_config(TOUCH_KEY_PAD, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "touch_pad_config failed: %s", esp_err_to_name(ret));
         touch_pad_deinit();
-        return ret;
+        touch_key_enabled = false;
+        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
     }
 
     ret = touch_pad_filter_start(TOUCH_KEY_FILTER_PERIOD_MS);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "touch_pad_filter_start failed: %s", esp_err_to_name(ret));
         touch_pad_deinit();
-        return ret;
+        touch_key_enabled = false;
+        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
     }
 
-    vTaskDelay(pdMS_TO_TICKS(TOUCH_KEY_FILTER_PERIOD_MS * TOUCH_KEY_CALIBRATION_SAMPLES));
+    // Laengere Wartezeit vor dem ersten Lesen fuer stabilen Filter
+    vTaskDelay(pdMS_TO_TICKS(TOUCH_KEY_FILTER_PERIOD_MS * TOUCH_KEY_CALIBRATION_SAMPLES * 2));
 
     uint32_t baseline_sum = 0;
     uint16_t sample = 0;
-    for (int i = 0; i < TOUCH_KEY_CALIBRATION_SAMPLES; i++) {
-        ret = touch_pad_read_filtered(TOUCH_KEY_PAD, &sample);
-        if (ret != ESP_OK || sample == 0) {
-            ESP_LOGE(TAG, "Touch baseline read failed: %s (sample=%u)", esp_err_to_name(ret), sample);
-            touch_pad_filter_stop();
-            touch_pad_deinit();
-            return (ret == ESP_OK) ? ESP_FAIL : ret;
+    bool baseline_ok = false;
+    
+    // Retry-Mechanismus fuer ESP_ERR_INVALID_STATE
+    for (int retry = 0; retry < 3; retry++) {
+        if (retry > 0) {
+            ESP_LOGW(TAG, "Touch baseline read retry %d/3...", retry);
+            vTaskDelay(pdMS_TO_TICKS(500));  // 500ms warten vor Retry
         }
-        baseline_sum += sample;
-        vTaskDelay(pdMS_TO_TICKS(TOUCH_KEY_FILTER_PERIOD_MS));
+        
+        baseline_sum = 0;
+        bool samples_ok = true;
+        
+        for (int i = 0; i < TOUCH_KEY_CALIBRATION_SAMPLES; i++) {
+            ret = touch_pad_read_filtered(TOUCH_KEY_PAD, &sample);
+            if (ret != ESP_OK || sample == 0) {
+                ESP_LOGW(TAG, "Touch baseline read failed (attempt %d/%d): %s (sample=%u)", 
+                         i + 1, TOUCH_KEY_CALIBRATION_SAMPLES, esp_err_to_name(ret), sample);
+                samples_ok = false;
+                break;
+            }
+            baseline_sum += sample;
+            vTaskDelay(pdMS_TO_TICKS(TOUCH_KEY_FILTER_PERIOD_MS));
+        }
+        
+        if (samples_ok && baseline_sum > 0) {
+            baseline_ok = true;
+            break;
+        }
+    }
+
+    if (!baseline_ok) {
+        ESP_LOGW(TAG, "Touch key calibration failed after retries - disabling touch key");
+        touch_pad_filter_stop();
+        touch_pad_deinit();
+        touch_key_enabled = false;
+        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
     }
 
     touch_key_baseline = (uint16_t)(baseline_sum / TOUCH_KEY_CALIBRATION_SAMPLES);

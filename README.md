@@ -168,6 +168,15 @@ Die aktuelle Firmware validiert Konfiguration wie folgt:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build-and-commit.ps1
 ```
 
+**Automatische Schritte:**
+1. Build-Nummer inkrementieren (`tools/increment_build.py`)
+2. `include/version.h` generieren
+3. ESP-IDF Build ausführen (`idf.py build`)
+4. Bei Fehler: Retry mit Version-Header-Regenerierung
+5. Erfolgreichen Commit speichern (`.last_built_commit`)
+6. Build-Metadaten automatisch committen (Commit-Message enthält Build-Nummer)
+7. Build-Nummer wird nach der Build-Übersicht ausgegeben
+
 ### Flash
 
 ```powershell
