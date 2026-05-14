@@ -21,8 +21,9 @@ Makefile
 # Version files (auto-generated)
 include/version.h
 
-# sdkconfig (board-specific, kept in Git for reference)
-# sdkconfig.old
+# sdkconfig (board-specific, local build configuration)
+sdkconfig
+sdkconfig.old
 
 # Local diagnostics and ad-hoc experiment artifacts
 tools/__pycache__/
@@ -48,3 +49,6 @@ wifi_test_monitor.txt
 # Local build/flash state
 .last_built_commit
 .last_flash_mode.json
+
+# Embedded git repositories
+ota-safe-template/
