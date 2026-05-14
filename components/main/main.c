@@ -149,6 +149,9 @@ static i2c_master_dev_handle_t vl53l0x_dev_handle = NULL;
 
 #if CONFIG_IDF_TARGET_ESP32
 #define TOUCH_KEY_PAD TOUCH_PAD_NUM7
+#define GPIO_TOUCH_KEY 27
+#define TOUCH_KEY_FILTER_PERIOD_MS 10
+// Makros aus config.h werden verwendet, keine Redefinition
 static bool touch_key_enabled = false;
 static uint16_t touch_key_baseline = 0;
 #endif
@@ -407,89 +410,25 @@ static esp_err_t init_gpio(void)
 #if CONFIG_IDF_TARGET_ESP32
 static esp_err_t init_touch_key(void)
 {
-    ESP_LOGI(TAG, "Initializing touch key on GPIO %d (T7)", GPIO_TOUCH_KEY);
+    // Touch-Pad initialisieren (ESP-IDF 6.1 kompatibel)
+    touch_pad_init();
+    touch_pad_set_voltage(TOUCH_HVOLT_KEEP, TOUCH_LVOLT_KEEP, TOUCH_HVOLT_ATTEN_1V);
+    touch_pad_config(TOUCH_KEY_PAD, 0);
+    touch_pad_filter_start(TOUCH_KEY_FILTER_PERIOD_MS);
 
-    esp_err_t ret = touch_pad_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "touch_pad_init failed: %s", esp_err_to_name(ret));
-        touch_key_enabled = false;
-        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
+    // Baseline messen
+    uint16_t touch_value = 0;
+    for (int i = 0; i < 100; i++) {
+        touch_pad_read(TOUCH_KEY_PAD, &touch_value);
+        touch_key_baseline = (uint16_t)(((uint32_t)touch_key_baseline * 9U + touch_value) / 10U);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 
-    ret = touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "touch_pad_set_fsm_mode failed: %s", esp_err_to_name(ret));
-        touch_pad_deinit();
-        touch_key_enabled = false;
-        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
-    }
-
-    ret = touch_pad_config(TOUCH_KEY_PAD, 0);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "touch_pad_config failed: %s", esp_err_to_name(ret));
-        touch_pad_deinit();
-        touch_key_enabled = false;
-        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
-    }
-
-    ret = touch_pad_filter_start(TOUCH_KEY_FILTER_PERIOD_MS);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "touch_pad_filter_start failed: %s", esp_err_to_name(ret));
-        touch_pad_deinit();
-        touch_key_enabled = false;
-        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
-    }
-
-    // Laengere Wartezeit vor dem ersten Lesen fuer stabilen Filter
-    vTaskDelay(pdMS_TO_TICKS(TOUCH_KEY_FILTER_PERIOD_MS * TOUCH_KEY_CALIBRATION_SAMPLES * 2));
-
-    uint32_t baseline_sum = 0;
-    uint16_t sample = 0;
-    bool baseline_ok = false;
-    
-    // Retry-Mechanismus fuer ESP_ERR_INVALID_STATE
-    for (int retry = 0; retry < 3; retry++) {
-        if (retry > 0) {
-            ESP_LOGW(TAG, "Touch baseline read retry %d/3...", retry);
-            vTaskDelay(pdMS_TO_TICKS(500));  // 500ms warten vor Retry
-        }
-        
-        baseline_sum = 0;
-        bool samples_ok = true;
-        
-        for (int i = 0; i < TOUCH_KEY_CALIBRATION_SAMPLES; i++) {
-            ret = touch_pad_read_filtered(TOUCH_KEY_PAD, &sample);
-            if (ret != ESP_OK || sample == 0) {
-                ESP_LOGW(TAG, "Touch baseline read failed (attempt %d/%d): %s (sample=%u)", 
-                         i + 1, TOUCH_KEY_CALIBRATION_SAMPLES, esp_err_to_name(ret), sample);
-                samples_ok = false;
-                break;
-            }
-            baseline_sum += sample;
-            vTaskDelay(pdMS_TO_TICKS(TOUCH_KEY_FILTER_PERIOD_MS));
-        }
-        
-        if (samples_ok && baseline_sum > 0) {
-            baseline_ok = true;
-            break;
-        }
-    }
-
-    if (!baseline_ok) {
-        ESP_LOGW(TAG, "Touch key calibration failed after retries - disabling touch key");
-        touch_pad_filter_stop();
-        touch_pad_deinit();
-        touch_key_enabled = false;
-        return ESP_OK;  // System weiterlaufen lassen ohne Touch-Key
-    }
-
-    touch_key_baseline = (uint16_t)(baseline_sum / TOUCH_KEY_CALIBRATION_SAMPLES);
+    ESP_LOGI(TAG, "Touch key initialized - baseline: %u", touch_key_baseline);
     touch_key_enabled = true;
-
-    ESP_LOGI(TAG, "Touch key ready on GPIO %d - baseline=%u threshold<%u%%",
-             GPIO_TOUCH_KEY, touch_key_baseline, TOUCH_KEY_THRESHOLD_PERCENT);
     return ESP_OK;
 }
+#endif
 
 static void touch_key_task(void *pvParameters)
 {
@@ -551,13 +490,6 @@ static void touch_key_task(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(TOUCH_KEY_SAMPLE_MS));
     }
 }
-#else
-static esp_err_t init_touch_key(void)
-{
-    ESP_LOGW(TAG, "Touch key not supported on this target");
-    return ESP_ERR_NOT_SUPPORTED;
-}
-#endif
 
 // ============================================================================
 // Phase 1: HTTP Server Setup (Forward Declaration)
@@ -3817,6 +3749,13 @@ static httpd_handle_t start_webserver(void)
  */
 void app_main(void)
 {
+    // Mutex initialisieren (frühe Initialisierung vor Verwendung)
+    ota_state_mutex = xSemaphoreCreateMutex();
+    if (ota_state_mutex == NULL) {
+        ESP_LOGE(TAG, "❌ Failed to create ota_state mutex!");
+        return;
+    }
+
     ESP_LOGI(TAG, "===========================================");
     ESP_LOGI(TAG, "🚀 bosch-tank %s (Build #%d)", VERSION_STRING, BUILD_NUMBER);
     ESP_LOGI(TAG, "   Compiled: %s", BUILD_TIMESTAMP);
@@ -3856,11 +3795,7 @@ void app_main(void)
         ESP_LOGE(TAG, "❌ Failed to create wifi_state mutex!");
         return;
     }
-    ota_state_mutex = xSemaphoreCreateMutex();
-    if (ota_state_mutex == NULL) {
-        ESP_LOGE(TAG, "❌ Failed to create ota_state mutex!");
-        return;
-    }
+    // ota_state_mutex bereits am Anfang von app_main initialisiert
     ESP_LOGI(TAG, "   ✓ sys_state mutex created");
     
     ESP_LOGI(TAG, "   → Testing I2C init...");

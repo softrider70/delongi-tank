@@ -148,7 +148,7 @@ Die aktuelle Firmware validiert Konfiguration wie folgt:
 
 ## OTA-Update
 
-- Partitionierung ist OTA-optimiert ueber `partitions_ota_custom.csv`
+- Partitionierung ist OTA-optimiert ueber `partitions.csv`
 - `POST /api/ota/start` erwartet `{ "url": "http://.../bosch-tank.bin" }` oder `https://...`
 - `GET /api/ota/status` liefert den Laufstatus und Fehlerdetails
 - Diagnose-Tab beinhaltet jetzt ein OTA-Update-Feld mit lokalem Binärpfad-Vorschlag
@@ -159,8 +159,58 @@ Die aktuelle Firmware validiert Konfiguration wie folgt:
 
 ### Umgebung aktivieren
 
+**Wichtig:** Der führende Punkt (.) ist wichtig für source, damit die Umgebungsvariablen im aktuellen Prozess überleben.
+
 ```powershell
 .\activate-esp-idf.ps1
+```
+
+### Manuelles Flash mit sichtbarer Ausgabe
+
+Wenn der automatische Flash nicht funktioniert oder die Ausgabe sichtbar sein soll:
+
+```powershell
+powershell -ExecutionPolicy Bypass -NoProfile -Command ". 'C:\Users\win4g\Downloads\GitHub\VS-Projekte\bosch-tank\activate-esp-idf.ps1'; idf.py -p COM3 flash monitor"
+```
+
+**Wichtige Parameter:**
+- `-ExecutionPolicy Bypass`: Umgeht PowerShell Execution Policy
+- `-NoProfile`: Schnellere Ausführung ohne Profil
+- Direkter PowerShell-Aufruf statt bash für bessere Kompatibilität
+- Vordergrund-Ausführung für sichtbare Ausgabe
+
+### COM-Port busy Probleme
+
+Wenn COM3 busy ist (PermissionError 13):
+
+```powershell
+# Python-Prozesse beenden die COM3 blockieren
+powershell -Command "Stop-Process -Name python -Force"
+
+# Danach erneut flashen
+powershell -ExecutionPolicy Bypass -NoProfile -Command ". 'C:\Users\win4g\Downloads\GitHub\VS-Projekte\bosch-tank\activate-esp-idf.ps1'; idf.py -p COM3 flash monitor"
+```
+
+### Mutex-Initialisierungsfehler
+
+**Problem:** `assert failed: xQueueSemaphoreTake` bei Mutex-Verwendung
+
+**Lösung:** Mutex muss VOR der ersten Verwendung initialisiert werden. Beispiel aus `main.c`:
+
+```c
+void app_main(void)
+{
+    // Mutex initialisieren (frühe Initialisierung vor Verwendung)
+    ota_state_mutex = xSemaphoreCreateMutex();
+    if (ota_state_mutex == NULL) {
+        ESP_LOGE(TAG, "❌ Failed to create ota_state mutex!");
+        return;
+    }
+
+    // Jetzt kann ota_state_mutex sicher verwendet werden
+    xSemaphoreTake(ota_state_mutex, portMAX_DELAY);
+    // ...
+}
 ```
 
 ### Build
@@ -173,10 +223,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build-and-commit.ps1
 1. Build-Nummer inkrementieren (`tools/increment_build.py`)
 2. `include/version.h` generieren
 3. ESP-IDF Build ausführen (`idf.py build`)
-4. Bei Fehler: Retry mit Version-Header-Regenerierung
-5. Erfolgreichen Commit speichern (`.last_built_commit`)
-6. Build-Metadaten automatisch committen (Commit-Message enthält Build-Nummer)
-7. Build-Nummer wird nach der Build-Übersicht ausgegeben
+4. Commit mit Buildnummer im Commit-Text (Format: "chore: build #X" oder "chore: vX.Y.Z")
+5. Build-Metadaten automatisch committen
+6. Buildnummer am Schluss nach der Build-Zusammenfassung ausgeben
 
 ### Flash
 
@@ -253,7 +302,7 @@ idf.py -p <serial port to use> monitor
 - `components/main/main.c`: aktive Firmware inkl. API und UI
 - `include/config.h`: Konfigurationskonstanten und Endpunkte
 - `include/version.h`: generierte Versionsinformation
-- `partitions_ota_custom.csv`: OTA-optimierte 4MB-Partitionierung (A/B-Slots)
+- `partitions.csv`: OTA-optimierte 4MB-Partitionierung (A/B-Slots)
 - `tools/flash-mode.ps1`: USB/OTA Flash-Umschalter fuer VS Code Terminal
 - `tools/serve_bin.py`: Lokaler HTTP-Server zum Ausliefern von `build/bosch-tank.bin` für OTA-Updates
 - `tools/increment_build.py`: Buildnummer-Generierung und `version.h`-Erzeugung
